@@ -15,7 +15,7 @@ export default function InfoPacientePage() {
   const router = useRouter();
   const params = useParams();
   const [paciente, setPaciente] = useState(null);
-  const [expandido, setExpandido] = useState(false);
+  const [expandido, setExpandido] = useState(true);
 
   useEffect(() => {
     verificarAutenticacao(router);
