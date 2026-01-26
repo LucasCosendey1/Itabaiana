@@ -4,8 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import InputCPF from '../components/InputCPF';
-import { validarLogin } from '../data/mockData';
-import { salvarToken, estaAutenticado } from '../utils/helpers';
 
 /**
  * PÁGINA DE LOGIN
@@ -18,14 +16,7 @@ export default function LoginPage() {
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
 
-  // Redireciona se já estiver logado
-  useEffect(() => {
-    if (estaAutenticado()) {
-      router.push('/busca');
-    }
-  }, [router]);
-
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setErro('');
     setCarregando(true);
@@ -37,14 +28,35 @@ export default function LoginPage() {
       return;
     }
 
-    // Valida credenciais
-    const usuario = validarLogin(cpf, senha);
+    try {
+      // Chamar API de login
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cpf, senha }),
+      });
 
-    if (usuario) {
-      salvarToken(usuario);
-      router.push('/busca');
-    } else {
-      setErro('CPF ou senha incorretos');
+      const data = await response.json();
+
+      if (response.ok) {
+        // Salvar token no localStorage
+        localStorage.setItem('auth_token', JSON.stringify({
+          cpf: data.usuario.cpf,
+          nome: data.usuario.nome_completo,
+          role: data.usuario.tipo_usuario,
+          timestamp: new Date().getTime()
+        }));
+        
+        router.push('/busca');
+      } else {
+        setErro(data.erro || 'CPF ou senha incorretos');
+      }
+    } catch (error) {
+      setErro('Erro ao conectar com o servidor');
+      console.error('Erro:', error);
+    } finally {
       setCarregando(false);
     }
   };
@@ -129,6 +141,27 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* Botão de Cadastro */}
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">
+                  Não tem uma conta?
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/cadastro')}
+              type="button"
+              className="mt-4 w-full py-3 rounded-lg font-medium transition-all bg-white text-primary border-2 border-primary hover:bg-blue-50"
+            >
+              Criar Nova Conta
+            </button>
+          </div>
+
           {/* Credenciais de teste */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-xs font-medium text-gray-700 mb-3 text-center">
@@ -137,13 +170,10 @@ export default function LoginPage() {
             <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-xs">
               <div>
                 <div className="font-semibold text-gray-700">Administrador:</div>
-                <div className="text-gray-600">CPF: 123.456.789-00</div>
-                <div className="text-gray-600">Senha: admin123</div>
+                <div className="text-gray-600">CPF: 000.000.000-00</div>
+                <div className="text-gray-600">Senha: 123456</div>
               </div>
               <div className="pt-2 border-t border-gray-200">
-                <div className="font-semibold text-gray-700">Operador:</div>
-                <div className="text-gray-600">CPF: 987.654.321-00</div>
-                <div className="text-gray-600">Senha: operador123</div>
               </div>
             </div>
           </div>

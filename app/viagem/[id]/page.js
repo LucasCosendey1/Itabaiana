@@ -4,65 +4,105 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '../../components/Header';
-import { buscarViagemPorId, buscarPacientePorCpf, confirmarPresenca } from '../../data/mockData';
 import { verificarAutenticacao, formatarData, formatarHora, formatarStatus, getCorStatus } from '../../utils/helpers';
 
 /**
- * PÁGINA DE DETALHES DA VIAGEM
- * Mostra informações completas da viagem e permite confirmar presença
+ * PÁGINA DE DETALHES DA VIAGEM - CONECTADA AO BANCO
  */
 export default function DetalhesViagemPage() {
   const router = useRouter();
   const params = useParams();
   const [viagem, setViagem] = useState(null);
-  const [paciente, setPaciente] = useState(null);
+  const [carregando, setCarregando] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState('');
+  const [erro, setErro] = useState('');
 
   useEffect(() => {
     verificarAutenticacao(router);
-
-    // Busca dados da viagem
-    const viagemEncontrada = buscarViagemPorId(params.id);
-    if (viagemEncontrada) {
-      setViagem(viagemEncontrada);
-      const pacienteEncontrado = buscarPacientePorCpf(viagemEncontrada.cpfPaciente);
-      setPaciente(pacienteEncontrado);
-    } else {
-      router.push('/busca');
-    }
+    carregarViagem();
   }, [params.id, router]);
 
-  const handleConfirmarPresenca = () => {
-    if (viagem.status === 'confirmado') {
-      return; // Já confirmado
+  const carregarViagem = async () => {
+    try {
+      const response = await fetch(`/api/viagem/${params.id}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setViagem(data.viagem);
+      } else {
+        setErro(data.erro || 'Viagem não encontrada');
+      }
+    } catch (error) {
+      setErro('Erro ao carregar viagem');
+      console.error('Erro:', error);
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const handleConfirmarPresenca = async () => {
+    if (viagem.status !== 'pendente') {
+      return;
     }
 
     setConfirmando(true);
 
-    // Simula delay de processamento
-    setTimeout(() => {
-      const sucesso = confirmarPresenca(viagem.id);
-      if (sucesso) {
-        setViagem({ ...viagem, status: 'confirmado' });
+    try {
+      const response = await fetch(`/api/viagem/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setViagem({ ...viagem, status: 'confirmado', confirmado_em: new Date().toISOString() });
         setMensagemSucesso('Presença confirmada com sucesso! ✓');
         setTimeout(() => setMensagemSucesso(''), 3000);
+      } else {
+        setErro(data.erro || 'Erro ao confirmar presença');
+        setTimeout(() => setErro(''), 3000);
       }
+    } catch (error) {
+      setErro('Erro ao conectar com o servidor');
+      console.error('Erro:', error);
+      setTimeout(() => setErro(''), 3000);
+    } finally {
       setConfirmando(false);
-    }, 800);
+    }
   };
 
   const handleVerInfoPaciente = () => {
-    router.push(`/paciente/${paciente.cpf}`);
+    // Remover formatação do CPF antes de passar na URL
+    const cpfLimpo = viagem.paciente_cpf.replace(/\D/g, '');
+    router.push(`/paciente/${cpfLimpo}`);
   };
 
-  if (!viagem || !paciente) {
+  if (carregando) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-500">Carregando...</div>
       </div>
     );
   }
+
+  if (erro && !viagem) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header titulo="Viagem não encontrada" mostrarVoltar voltarPara="/busca" />
+        <main className="container mx-auto px-4 py-6 max-w-2xl">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {erro}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!viagem) return null;
 
   const statusClass = getCorStatus(viagem.status);
   const podeConfirmar = viagem.status === 'pendente';
@@ -72,13 +112,19 @@ export default function DetalhesViagemPage() {
       <Header titulo="Detalhes da Viagem" mostrarVoltar voltarPara="/busca" />
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
-        {/* Mensagem de sucesso */}
+        {/* Mensagens */}
         {mensagemSucesso && (
           <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
             {mensagemSucesso}
+          </div>
+        )}
+
+        {erro && viagem && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            {erro}
           </div>
         )}
 
@@ -89,10 +135,10 @@ export default function DetalhesViagemPage() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h1 className="text-2xl font-bold mb-2">
-                  {formatarData(viagem.dataViagem)}
+                  {formatarData(viagem.data_viagem)}
                 </h1>
                 <div className="text-blue-100">
-                  ID da viagem: {viagem.id}
+                  Código: {viagem.codigo_viagem}
                 </div>
               </div>
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusClass}`}>
@@ -108,17 +154,17 @@ export default function DetalhesViagemPage() {
             </h2>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white font-bold text-2xl">
-                {paciente.nomeCompleto.charAt(0)}
+                {viagem.paciente_nome.charAt(0)}
               </div>
               <div>
                 <div className="font-semibold text-gray-900 text-lg">
-                  {paciente.nomeCompleto}
+                  {viagem.paciente_nome}
                 </div>
                 <div className="text-sm text-gray-600">
-                  CPF: {paciente.cpf}
+                  CPF: {viagem.paciente_cpf}
                 </div>
                 <div className="text-sm text-gray-600">
-                  Cartão SUS: {paciente.cartaoSus}
+                  Cartão SUS: {viagem.cartao_sus}
                 </div>
               </div>
             </div>
@@ -137,14 +183,38 @@ export default function DetalhesViagemPage() {
             </div>
 
             {/* Médico */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase mb-1">
-                Médico Responsável
-              </h3>
-              <p className="text-gray-900">
-                {viagem.medico}
-              </p>
-            </div>
+            {viagem.medico_nome && (
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-1">
+                  Médico Responsável
+                </h3>
+                <p className="text-gray-900">
+                  {viagem.medico_nome}
+                </p>
+                {viagem.medico_crm && (
+                  <p className="text-sm text-gray-600">
+                    {viagem.medico_crm} - {viagem.medico_especializacao}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Motorista */}
+            {viagem.motorista_nome && (
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-1">
+                  Motorista
+                </h3>
+                <p className="text-gray-900">
+                  {viagem.motorista_nome}
+                </p>
+                {viagem.veiculo_modelo && (
+                  <p className="text-sm text-gray-600">
+                    {viagem.veiculo_modelo} - {viagem.veiculo_placa}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Horários */}
             <div className="grid grid-cols-2 gap-4">
@@ -153,7 +223,7 @@ export default function DetalhesViagemPage() {
                   Horário Saída
                 </h3>
                 <p className="text-primary font-bold text-xl">
-                  {formatarHora(viagem.horarioViagem)}
+                  {formatarHora(viagem.horario_saida)}
                 </p>
               </div>
               <div className="bg-blue-50 rounded-lg p-4">
@@ -161,7 +231,7 @@ export default function DetalhesViagemPage() {
                   Horário Consulta
                 </h3>
                 <p className="text-primary font-bold text-xl">
-                  {formatarHora(viagem.horarioConsulta)}
+                  {formatarHora(viagem.horario_consulta)}
                 </p>
               </div>
             </div>
@@ -185,7 +255,12 @@ export default function DetalhesViagemPage() {
                     d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" 
                   />
                 </svg>
-                <span>{viagem.hospital}</span>
+                <div>
+                  <p className="font-medium">{viagem.hospital_destino}</p>
+                  {viagem.endereco_destino && (
+                    <p className="text-sm text-gray-600">{viagem.endereco_destino}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

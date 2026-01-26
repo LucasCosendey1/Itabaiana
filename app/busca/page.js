@@ -4,19 +4,17 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
-import InputCPF from '../components/InputCPF';
 import CardViagem from '../components/CardViagem';
-import { buscarPacientePorCpf, buscarPacientesPorNome, buscarViagensPorCpf } from '../data/mockData';
 import { verificarAutenticacao, getNomeResumido } from '../utils/helpers';
 
 /**
- * PÁGINA DE BUSCA DE PACIENTE
- * Permite buscar por nome ou CPF e listar viagens
+ * PÁGINA DE BUSCA DE PACIENTE - CONECTADA AO BANCO
  */
 export default function BuscaPage() {
   const router = useRouter();
   const [busca, setBusca] = useState('');
-  const [pacienteEncontrado, setPacienteEncontrado] = useState(null);
+  const [pacientes, setPacientes] = useState([]);
+  const [pacienteSelecionado, setPacienteSelecionado] = useState(null);
   const [viagens, setViagens] = useState([]);
   const [mensagem, setMensagem] = useState('');
   const [buscando, setBuscando] = useState(false);
@@ -26,20 +24,10 @@ export default function BuscaPage() {
     verificarAutenticacao(router);
   }, [router]);
 
-  // Detecta o tipo de busca baseado no conteúdo
-  const getTipoBusca = () => {
-    const buscarLimpa = busca.trim();
-    // Se tiver apenas números, pontos ou traços, é CPF
-    if (buscarLimpa.match(/^[\d.\-]+$/)) {
-      return 'cpf';
-    }
-    // Caso contrário, é nome
-    return 'nome';
-  };
-
-  const handleBuscar = () => {
+  const handleBuscar = async () => {
     setMensagem('');
-    setPacienteEncontrado(null);
+    setPacientes([]);
+    setPacienteSelecionado(null);
     setViagens([]);
 
     if (!busca.trim()) {
@@ -49,41 +37,54 @@ export default function BuscaPage() {
 
     setBuscando(true);
 
-    // Simula delay de busca (para parecer mais realista)
-    setTimeout(() => {
-      let paciente = null;
-      const tipoBusca = getTipoBusca();
+    try {
+      const response = await fetch(`/api/buscar-paciente?busca=${encodeURIComponent(busca)}`);
+      const data = await response.json();
 
-      // Busca por CPF
-      if (tipoBusca === 'cpf') {
-        paciente = buscarPacientePorCpf(busca);
-      } 
-      // Busca por nome
-      else {
-        const pacientes = buscarPacientesPorNome(busca);
-        if (pacientes.length > 0) {
-          paciente = pacientes[0]; // Pega o primeiro resultado
-        }
-      }
-
-      if (paciente) {
-        setPacienteEncontrado(paciente);
-        const viagensPaciente = buscarViagensPorCpf(paciente.cpf);
-        setViagens(viagensPaciente);
-
-        if (viagensPaciente.length === 0) {
-          setMensagem('Paciente encontrado, mas não há viagens cadastradas.');
+      if (response.ok) {
+        if (data.pacientes && data.pacientes.length > 0) {
+          if (data.pacientes.length === 1) {
+            // Se encontrou apenas 1, seleciona automaticamente
+            const paciente = data.pacientes[0];
+            setPacienteSelecionado(paciente);
+            setViagens(paciente.viagens || []);
+            
+            if (!paciente.viagens || paciente.viagens.length === 0) {
+              setMensagem('Paciente encontrado, mas não há viagens cadastradas.');
+            }
+          } else {
+            // Se encontrou vários, mostra lista para escolher
+            setPacientes(data.pacientes);
+            setMensagem(`${data.pacientes.length} pacientes encontrados. Selecione um:`);
+          }
+        } else {
+          setMensagem('Nenhum paciente encontrado com esse nome ou CPF');
         }
       } else {
-        setMensagem('Nenhum paciente encontrado com esse ' + (tipoBusca === 'cpf' ? 'CPF' : 'nome'));
+        setMensagem(data.erro || 'Erro ao buscar paciente');
       }
-
+    } catch (error) {
+      setMensagem('Erro ao conectar com o servidor');
+      console.error('Erro:', error);
+    } finally {
       setBuscando(false);
-    }, 500);
+    }
+  };
+
+  const handleSelecionarPaciente = (paciente) => {
+    setPacienteSelecionado(paciente);
+    setViagens(paciente.viagens || []);
+    setPacientes([]);
+    
+    if (!paciente.viagens || paciente.viagens.length === 0) {
+      setMensagem('Paciente selecionado, mas não há viagens cadastradas.');
+    } else {
+      setMensagem('');
+    }
   };
 
   const handleVerDetalhes = (viagem) => {
-    router.push(`/viagem/${viagem.id}`);
+    router.push(`/viagem/${viagem.codigo_viagem}`);
   };
 
   const handleKeyPress = (e) => {
@@ -91,8 +92,6 @@ export default function BuscaPage() {
       handleBuscar();
     }
   };
-
-  const tipoBuscaAtual = getTipoBusca();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -115,9 +114,6 @@ export default function BuscaPage() {
                 placeholder="Digite o nome ou CPF do paciente"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
               />
-              <p className="text-xs text-gray-500 mt-2">
-                {tipoBuscaAtual === 'cpf' ? '📋 Buscando por CPF' : '👤 Buscando por nome'}
-              </p>
             </div>
 
             {/* Botão de buscar */}
@@ -142,21 +138,62 @@ export default function BuscaPage() {
           </div>
         )}
 
-        {/* Informações do paciente encontrado */}
-        {pacienteEncontrado && (
+        {/* Lista de pacientes (quando encontra vários) */}
+        {pacientes.length > 0 && (
+          <div className="space-y-3 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Selecione o paciente:
+            </h2>
+            {pacientes.map((paciente) => (
+              <div
+                key={paciente.cpf}
+                onClick={() => handleSelecionarPaciente(paciente)}
+                className="bg-white border border-gray-200 rounded-lg p-4 hover:border-primary hover:shadow-md transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    {getNomeResumido(paciente.nome_completo).charAt(0)}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">
+                      {paciente.nome_completo}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      CPF: {paciente.cpf}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {paciente.viagens?.length || 0} viagem(ns) cadastrada(s)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Informações do paciente selecionado */}
+        {pacienteSelecionado && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-bold text-lg">
-                {getNomeResumido(pacienteEncontrado.nomeCompleto).charAt(0)}
-              </div>
-              <div>
-                <div className="font-semibold text-gray-900">
-                  {pacienteEncontrado.nomeCompleto}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  {getNomeResumido(pacienteSelecionado.nome_completo).charAt(0)}
                 </div>
-                <div className="text-sm text-gray-600">
-                  CPF: {pacienteEncontrado.cpf}
+                <div>
+                  <div className="font-semibold text-gray-900">
+                    {pacienteSelecionado.nome_completo}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    CPF: {pacienteSelecionado.cpf}
+                  </div>
                 </div>
               </div>
+              <button
+                onClick={() => router.push(`/paciente/${pacienteSelecionado.cpf}`)}
+                className="text-sm text-primary hover:text-primary-dark font-medium"
+              >
+                Ver perfil →
+              </button>
             </div>
           </div>
         )}
@@ -170,7 +207,7 @@ export default function BuscaPage() {
             <div className="space-y-4">
               {viagens.map((viagem) => (
                 <CardViagem
-                  key={viagem.id}
+                  key={viagem.viagem_id}
                   viagem={viagem}
                   onClick={() => handleVerDetalhes(viagem)}
                 />
@@ -180,7 +217,7 @@ export default function BuscaPage() {
         )}
 
         {/* Estado vazio */}
-        {!pacienteEncontrado && !mensagem && (
+        {!pacienteSelecionado && pacientes.length === 0 && !mensagem && (
           <div className="text-center py-12">
             <svg
               className="w-24 h-24 text-gray-300 mx-auto mb-4"

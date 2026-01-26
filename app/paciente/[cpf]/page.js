@@ -4,34 +4,50 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '../../components/Header';
-import { buscarPacientePorCpf } from '../../data/mockData';
 import { verificarAutenticacao, getNomeResumido } from '../../utils/helpers';
 
 /**
- * PÁGINA DE INFORMAÇÕES DO PACIENTE
- * Mostra dados completos do paciente (expansível)
+ * PÁGINA DE INFORMAÇÕES DO PACIENTE - CONECTADA AO BANCO
  */
 export default function InfoPacientePage() {
   const router = useRouter();
   const params = useParams();
   const [paciente, setPaciente] = useState(null);
   const [expandido, setExpandido] = useState(true);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
 
   useEffect(() => {
     verificarAutenticacao(router);
-
-    // Busca dados do paciente
-    const cpfDecodificado = decodeURIComponent(params.cpf);
-    const pacienteEncontrado = buscarPacientePorCpf(cpfDecodificado);
-    
-    if (pacienteEncontrado) {
-      setPaciente(pacienteEncontrado);
-    } else {
-      router.push('/busca');
-    }
+    carregarPaciente();
   }, [params.cpf, router]);
 
-  if (!paciente) {
+  const carregarPaciente = async () => {
+    try {
+      const cpfDecodificado = decodeURIComponent(params.cpf);
+      const response = await fetch(`/api/paciente/${cpfDecodificado}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setPaciente(data.paciente);
+      } else {
+        setErro(data.erro || 'Paciente não encontrado');
+      }
+    } catch (error) {
+      setErro('Erro ao carregar informações do paciente');
+      console.error('Erro:', error);
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const formatarData = (data) => {
+    if (!data) return '';
+    const [ano, mes, dia] = data.split('T')[0].split('-');
+    return `${dia}/${mes}/${ano}`;
+  };
+
+  if (carregando) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-500">Carregando...</div>
@@ -39,7 +55,20 @@ export default function InfoPacientePage() {
     );
   }
 
-  const nomeResumido = getNomeResumido(paciente.nomeCompleto);
+  if (erro || !paciente) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header titulo="Paciente não encontrado" mostrarVoltar />
+        <main className="container mx-auto px-4 py-6 max-w-2xl">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {erro || 'Paciente não encontrado'}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const nomeResumido = getNomeResumido(paciente.nome_completo);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -60,7 +89,7 @@ export default function InfoPacientePage() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold mb-1">
-                    {expandido ? paciente.nomeCompleto : nomeResumido}
+                    {expandido ? paciente.nome_completo : nomeResumido}
                   </h1>
                   <p className="text-blue-100 text-sm">
                     {expandido ? 'Clique para recolher' : 'Clique para ver detalhes completos'}
@@ -98,7 +127,7 @@ export default function InfoPacientePage() {
                   Nome Completo
                 </h3>
                 <p className="text-gray-900 text-lg font-medium">
-                  {paciente.nomeCompleto}
+                  {paciente.nome_completo}
                 </p>
               </div>
 
@@ -124,7 +153,7 @@ export default function InfoPacientePage() {
                     </svg>
                     <div>
                       <span className="text-sm text-gray-600">Cartão SUS:</span>
-                      <span className="ml-2 text-gray-900 font-medium">{paciente.cartaoSus}</span>
+                      <span className="ml-2 text-gray-900 font-medium">{paciente.cartao_sus}</span>
                     </div>
                   </div>
                 </div>
@@ -142,9 +171,18 @@ export default function InfoPacientePage() {
                     </svg>
                     <div>
                       <span className="text-sm text-gray-600">Data de Nascimento:</span>
-                      <span className="ml-2 text-gray-900 font-medium">{paciente.dataNascimento}</span>
+                      <span className="ml-2 text-gray-900 font-medium">{formatarData(paciente.data_nascimento)}</span>
+                      {paciente.idade && (
+                        <span className="ml-2 text-sm text-gray-500">({paciente.idade} anos)</span>
+                      )}
                     </div>
                   </div>
+                  {paciente.tipo_sanguineo && (
+                    <div>
+                      <span className="text-sm text-gray-600">Tipo Sanguíneo:</span>
+                      <span className="ml-2 text-gray-900 font-medium">{paciente.tipo_sanguineo}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -182,19 +220,21 @@ export default function InfoPacientePage() {
                   Filiação
                 </h3>
                 <div className="space-y-2">
-                  <div>
-                    <span className="text-sm text-gray-600">Nome do Pai:</span>
-                    <p className="text-gray-900 font-medium">{paciente.nomePai}</p>
-                  </div>
+                  {paciente.nome_pai && (
+                    <div>
+                      <span className="text-sm text-gray-600">Nome do Pai:</span>
+                      <p className="text-gray-900 font-medium">{paciente.nome_pai}</p>
+                    </div>
+                  )}
                   <div>
                     <span className="text-sm text-gray-600">Nome da Mãe:</span>
-                    <p className="text-gray-900 font-medium">{paciente.nomeMae}</p>
+                    <p className="text-gray-900 font-medium">{paciente.nome_mae}</p>
                   </div>
                 </div>
               </div>
 
               {/* Endereço */}
-              <div>
+              <div className="pb-4 border-b border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
                   Endereço
                 </h3>
@@ -205,19 +245,37 @@ export default function InfoPacientePage() {
                     </svg>
                     <div className="flex-1">
                       <p className="text-gray-900">{paciente.endereco}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                        </svg>
-                        <div>
-                          <span className="text-sm text-gray-600">CEP:</span>
-                          <span className="ml-2 text-gray-900 font-medium">{paciente.cep}</span>
-                        </div>
+                      <div className="mt-2">
+                        <span className="text-sm text-gray-600">CEP:</span>
+                        <span className="ml-2 text-gray-900 font-medium">{paciente.cep}</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Informações Médicas */}
+              {(paciente.alergias || paciente.observacoes_medicas) && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+                    Informações Médicas
+                  </h3>
+                  <div className="space-y-2">
+                    {paciente.alergias && (
+                      <div>
+                        <span className="text-sm text-gray-600">Alergias:</span>
+                        <p className="text-gray-900">{paciente.alergias}</p>
+                      </div>
+                    )}
+                    {paciente.observacoes_medicas && (
+                      <div>
+                        <span className="text-sm text-gray-600">Observações:</span>
+                        <p className="text-gray-900">{paciente.observacoes_medicas}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
