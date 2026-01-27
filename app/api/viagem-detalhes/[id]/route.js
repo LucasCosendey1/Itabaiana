@@ -30,7 +30,7 @@ export async function GET(request, { params }) {
       `SELECT 
         v.id as viagem_id,
         v.codigo_viagem,
-        v.data_viagem,
+        TO_CHAR(v.data_viagem, 'YYYY-MM-DD') as data_viagem,
         v.horario_saida,
         v.status,
         v.hospital_destino,
@@ -40,10 +40,17 @@ export async function GET(request, { params }) {
         mot_usr.nome_completo as motorista_nome,
         mot_usr.telefone as motorista_telefone,
         mot.veiculo_modelo,
-        mot.veiculo_placa
+        mot.veiculo_placa,
+        -- Ônibus
+        o.placa as onibus_placa,
+        o.modelo as onibus_modelo,
+        o.ano as onibus_ano,
+        o.cor as onibus_cor,
+        o.capacidade_passageiros as onibus_capacidade
       FROM viagens v
       LEFT JOIN motoristas mot ON v.motorista_id = mot.id
       LEFT JOIN usuarios mot_usr ON mot.usuario_id = mot_usr.id
+      LEFT JOIN onibus o ON v.onibus_id = o.id
       WHERE v.codigo_viagem = $1`,
       [id]
     );

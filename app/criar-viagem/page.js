@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
-import InputCPF from '../components/InputCPF';
 import { verificarAutenticacao } from '../utils/helpers';
 
 /**
@@ -21,8 +20,10 @@ export default function CriarViagemPage() {
   const [numeroVagas, setNumeroVagas] = useState('');
   
   const [motoristaId, setMotoristaId] = useState('');
+  const [onibusId, setOnibusId] = useState('');
   
   const [motoristas, setMotoristas] = useState([]);
+  const [onibus, setOnibus] = useState([]);
   
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -53,6 +54,13 @@ export default function CriarViagemPage() {
         const dataMotoristas = await resMotoristas.json();
         setMotoristas(dataMotoristas.motoristas || []);
       }
+
+      // Carregar ônibus
+      const resOnibus = await fetch('/api/listar-onibus');
+      if (resOnibus.ok) {
+        const dataOnibus = await resOnibus.json();
+        setOnibus(dataOnibus.onibus || []);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     }
@@ -69,6 +77,21 @@ export default function CriarViagemPage() {
       return `${numeros.slice(0, 2)}h${numeros.slice(2)}`;
     }
     return `${numeros.slice(0, 2)}h${numeros.slice(2, 4)}`;
+  };
+
+  // Atualizar número de vagas automaticamente quando seleciona ônibus
+  const handleOnibusChange = (e) => {
+    const selectedId = e.target.value;
+    setOnibusId(selectedId);
+    
+    if (selectedId) {
+      const onibusSelecionado = onibus.find(o => o.id === parseInt(selectedId));
+      if (onibusSelecionado) {
+        setNumeroVagas(onibusSelecionado.capacidade_passageiros.toString());
+      }
+    } else {
+      setNumeroVagas('');
+    }
   };
 
   const validarFormulario = () => {
@@ -113,7 +136,8 @@ export default function CriarViagemPage() {
         data_viagem: dataViagem,
         horario_saida: horarioSaidaConvertido,
         numero_vagas: parseInt(numeroVagas),
-        motorista_id: motoristaId || null
+        motorista_id: motoristaId || null,
+        onibus_id: onibusId || null
       };
 
       const response = await fetch('/api/criar-viagem', {
@@ -144,7 +168,7 @@ export default function CriarViagemPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header titulo="Criar Nova Viagem" mostrarVoltar voltarPara="/busca" />
+      <Header titulo="Criar Nova Viagem" mostrarVoltar voltarPara="/gerenciar-viagens" />
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -212,6 +236,43 @@ export default function CriarViagemPage() {
                   />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Ônibus e Motorista */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+              </svg>
+              Ônibus e Motorista
+            </h3>
+
+            <div className="space-y-4">
+              {/* Ônibus */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Selecione o Ônibus
+                </label>
+                <select
+                  value={onibusId}
+                  onChange={handleOnibusChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                >
+                  <option value="">Nenhum ônibus selecionado</option>
+                  {onibus.map((bus) => (
+                    <option key={bus.id} value={bus.id}>
+                      {bus.placa} - {bus.modelo} ({bus.ano}) - {bus.capacidade_passageiros} lugares - {bus.cor}
+                    </option>
+                  ))}
+                </select>
+                {onibus.length === 0 && (
+                  <p className="text-sm text-amber-600 mt-2">
+                    ⚠️ Nenhum ônibus cadastrado. <button type="button" onClick={() => router.push('/cadastrar-onibus')} className="underline hover:text-amber-700">Cadastrar agora</button>
+                  </p>
+                )}
+              </div>
 
               {/* Número de Vagas */}
               <div>
@@ -223,35 +284,34 @@ export default function CriarViagemPage() {
                   value={numeroVagas}
                   onChange={(e) => setNumeroVagas(e.target.value)}
                   min="1"
-                  placeholder="Ex: 15"
+                  placeholder={onibusId ? "Preenchido automaticamente" : "Ex: 15"}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
+                {onibusId && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    ✅ Capacidade do ônibus selecionado
+                  </p>
+                )}
               </div>
-            </div>
-          </div>
 
-          {/* Motorista */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Motorista (Opcional)
-            </h3>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Selecione o Motorista
-              </label>
-              <select
-                value={motoristaId}
-                onChange={(e) => setMotoristaId(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-              >
-                <option value="">Selecione um motorista</option>
-                {motoristas.map((motorista) => (
-                  <option key={motorista.id} value={motorista.id}>
-                    {motorista.nome_completo} - {motorista.veiculo_modelo} ({motorista.veiculo_placa})
-                  </option>
-                ))}
-              </select>
+              {/* Motorista */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Selecione o Motorista
+                </label>
+                <select
+                  value={motoristaId}
+                  onChange={(e) => setMotoristaId(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                >
+                  <option value="">Nenhum motorista selecionado</option>
+                  {motoristas.map((motorista) => (
+                    <option key={motorista.id} value={motorista.id}>
+                      {motorista.nome_completo} - CNH: {motorista.cnh}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

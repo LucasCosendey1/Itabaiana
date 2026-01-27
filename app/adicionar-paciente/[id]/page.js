@@ -106,54 +106,72 @@ export default function AdicionarPacientePage() {
     return true;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErro('');
-    setSucesso('');
 
-    if (!validarFormulario()) {
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setErro('');
+  setSucesso('');
+
+  if (!validarFormulario()) {
+    return;
+  }
+
+  setAdicionando(true);
+
+  try {
+    const horarioConsultaConvertido = horarioConsulta ? horarioConsulta.replace('h', ':') : null;
+
+    // Primeiro, buscar o viagem_id baseado no código
+    const viagemResponse = await fetch(`/api/viagem-detalhes/${params.id}`);
+    
+    if (!viagemResponse.ok) {
+      setErro('Erro ao buscar dados da viagem');
+      setAdicionando(false);
+      return;
+    }
+    
+    const viagemData = await viagemResponse.json();
+    
+    if (!viagemData.viagem) {
+      setErro('Viagem não encontrada');
+      setAdicionando(false);
       return;
     }
 
-    setAdicionando(true);
+    const dados = {
+      viagem_id: viagemData.viagem.viagem_id, // ✅ Agora viagemData está definido
+      paciente_id: pacienteSelecionado.paciente_id,
+      motivo,
+      horario_consulta: horarioConsultaConvertido,
+      medico_id: medicoId || null,
+      observacoes: observacoes || null
+    };
 
-    try {
-      const horarioConsultaConvertido = horarioConsulta ? horarioConsulta.replace('h', ':') : null;
+    const response = await fetch('/api/adicionar-paciente-viagem', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(dados),
+    });
 
-      const dados = {
-        viagem_codigo: params.id,
-        paciente_id: pacienteSelecionado.paciente_id,
-        motivo,
-        horario_consulta: horarioConsultaConvertido,
-        medico_id: medicoId || null,
-        observacoes: observacoes || null
-      };
+    const data = await response.json();
 
-      const response = await fetch('/api/adicionar-paciente-viagem', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dados),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSucesso('Paciente adicionado com sucesso!');
-        setTimeout(() => {
-          router.push(`/viagem/${params.id}`);
-        }, 1500);
-      } else {
-        setErro(data.erro || 'Erro ao adicionar paciente');
-      }
-    } catch (error) {
-      setErro('Erro ao conectar com o servidor');
-      console.error('Erro:', error);
-    } finally {
-      setAdicionando(false);
+    if (response.ok) {
+      setSucesso('Paciente adicionado com sucesso!');
+      setTimeout(() => {
+        router.push(`/viagem/${params.id}`);
+      }, 1500);
+    } else {
+      setErro(data.erro || 'Erro ao adicionar paciente');
     }
-  };
+  } catch (error) {
+    setErro('Erro ao conectar com o servidor');
+    console.error('Erro completo:', error);
+  } finally {
+    setAdicionando(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">

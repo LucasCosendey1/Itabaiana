@@ -41,15 +41,16 @@ export async function POST(request) {
     // Gerar código único para a viagem
     const codigoViagem = gerarCodigoViagem();
 
-    // Inserir viagem (sem paciente)
+    // Inserir viagem COM ônibus
     const resultado = await client.query(
       `INSERT INTO viagens 
-       (codigo_viagem, motorista_id, hospital_destino, endereco_destino, data_viagem, horario_saida, numero_vagas, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente') 
+       (codigo_viagem, motorista_id, onibus_id, hospital_destino, endereco_destino, data_viagem, horario_saida, numero_vagas, status) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente') 
        RETURNING id, codigo_viagem`,
       [
         codigoViagem,
         dados.motorista_id || null,
+        dados.onibus_id || null,
         dados.hospital_destino,
         dados.endereco_destino || dados.hospital_destino,
         dados.data_viagem,

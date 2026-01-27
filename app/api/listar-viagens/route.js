@@ -20,7 +20,7 @@ export async function GET(request) {
       `SELECT 
         v.id as viagem_id,
         v.codigo_viagem,
-        v.data_viagem,
+        TO_CHAR(v.data_viagem, 'YYYY-MM-DD') as data_viagem,  -- ✅ Formata no banco
         v.horario_saida,
         v.horario_consulta,
         v.status,

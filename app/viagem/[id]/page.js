@@ -86,22 +86,45 @@ export default function DetalhesViagemPage() {
         
         {/* Card Principal da Viagem */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
-          {/* Cabeçalho */}
-          <div className="bg-gradient-to-r from-primary to-blue-600 text-white p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h1 className="text-2xl font-bold mb-2">
-                  {formatarData(viagem.data_viagem)}
-                </h1>
-                <div className="text-blue-100">
-                  Código: {viagem.codigo_viagem}
-                </div>
-              </div>
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusClass}`}>
-                {formatarStatus(viagem.status)}
-              </span>
-            </div>
-          </div>
+
+
+{/* Cabeçalho */}
+<div className="bg-gradient-to-r from-primary to-blue-600 text-white p-6">
+  <div className="mb-4">
+    {/* Data e Horário em destaque */}
+    <div className="flex items-center gap-3 mb-3">
+      <div>
+        <div className="text-xs text-blue-100 uppercase tracking-wide mb-1">
+          Data
+        </div>
+        <div className="text-2xl font-bold">
+          {formatarData(viagem.data_viagem)}
+        </div>
+      </div>
+      
+      <div className="text-blue-200 text-3xl">•</div>
+      
+      <div>
+        <div className="text-xs text-blue-100 uppercase tracking-wide mb-1">
+          Saída
+        </div>
+        <div className="text-2xl font-bold">
+          {formatarHora(viagem.horario_saida)}
+        </div>
+      </div>
+    </div>
+    
+    <div className="flex items-center justify-between">
+      <div className="text-blue-100 text-sm">
+        Código: {viagem.codigo_viagem}
+      </div>
+      <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusClass}`}>
+        {formatarStatus(viagem.status)}
+      </span>
+    </div>
+  </div>
+</div>
+
 
           {/* Informações da Viagem */}
           <div className="p-6 space-y-4">
@@ -193,6 +216,36 @@ export default function DetalhesViagemPage() {
             )}
           </div>
         </div>
+
+        {/* Ônibus */}
+        {viagem.onibus_placa && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">
+              Ônibus
+            </h3>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-900">
+                    Placa: {viagem.onibus_placa}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {viagem.onibus_modelo} ({viagem.onibus_ano})
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {viagem.onibus_capacidade} lugares • {viagem.onibus_cor}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Lista de Pacientes */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">

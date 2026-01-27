@@ -2,7 +2,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { removerToken, getToken } from '../utils/helpers';
+import { useState, useEffect } from 'react';
+import { removerToken } from '../utils/helpers';
 
 /**
  * COMPONENTE DE HEADER
@@ -10,7 +11,24 @@ import { removerToken, getToken } from '../utils/helpers';
  */
 export default function Header({ titulo, mostrarVoltar = false, voltarPara = null }) {
   const router = useRouter();
-  const usuario = getToken();
+  const [usuario, setUsuario] = useState(null);
+  const [montado, setMontado] = useState(false);
+
+  // Carregar dados do usuário apenas no cliente
+  useEffect(() => {
+    setMontado(true);
+    
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        try {
+          setUsuario(JSON.parse(token));
+        } catch (error) {
+          console.error('Erro ao ler token:', error);
+        }
+      }
+    }
+  }, []);
 
   const handleVoltar = () => {
     if (voltarPara) {
@@ -24,6 +42,24 @@ export default function Header({ titulo, mostrarVoltar = false, voltarPara = nul
     removerToken();
     router.push('/login');
   };
+
+  // Não renderizar botões até estar montado no cliente
+  if (!montado) {
+    return (
+      <header className="bg-primary text-white shadow-md">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              {mostrarVoltar && (
+                <div className="w-6 h-6"></div>
+              )}
+              <h1 className="text-xl font-bold">{titulo}</h1>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="bg-primary text-white shadow-md">
@@ -81,7 +117,7 @@ export default function Header({ titulo, mostrarVoltar = false, voltarPara = nul
         {/* Informação do usuário logado */}
         {usuario && (
           <div className="text-xs text-blue-100">
-            {usuario.nome} • {usuario.role === 'admin' ? 'Administrador' : 'Operador'}
+            {usuario.nome} • {usuario.role === 'admin' || usuario.role === 'administrador' ? 'Administrador' : 'Operador'}
           </div>
         )}
       </div>
