@@ -32,11 +32,13 @@ export function formatarData(data) {
 }
 
 /**
- * Formata hora: "09:30" → "09h30"
+ * Formata hora: "09:30" → "09h30" ou "09:30:00" → "09h30"
  */
 export function formatarHora(hora) {
   if (!hora) return '';
-  return hora.replace(':', 'h');
+  // Remove segundos se tiver
+  const horaSemSegundos = hora.split(':').slice(0, 2).join(':');
+  return horaSemSegundos.replace(':', 'h');
 }
 
 /**
@@ -56,7 +58,10 @@ export function formatarStatus(status) {
   const statusMap = {
     'pendente': 'Pendente',
     'confirmado': 'Confirmado',
-    'realizado': 'Realizado'
+    'realizado': 'Realizado',
+    'em_andamento': 'Em Andamento',
+    'concluido': 'Concluído',
+    'cancelado': 'Cancelado'
   };
   return statusMap[status] || status;
 }
@@ -68,7 +73,10 @@ export function getCorStatus(status) {
   const cores = {
     'pendente': 'bg-yellow-100 text-yellow-800',
     'confirmado': 'bg-green-100 text-green-800',
-    'realizado': 'bg-gray-100 text-gray-800'
+    'realizado': 'bg-gray-100 text-gray-800',
+    'em_andamento': 'bg-blue-100 text-blue-800',
+    'concluido': 'bg-gray-100 text-gray-800',
+    'cancelado': 'bg-red-100 text-red-800'
   };
   return cores[status] || 'bg-gray-100 text-gray-800';
 }

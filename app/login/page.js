@@ -45,7 +45,7 @@ export default function LoginPage() {
         localStorage.setItem('auth_token', JSON.stringify({
           cpf: data.usuario.cpf,
           nome: data.usuario.nome_completo,
-          role: data.usuario.tipo_usuario,
+          role: data.usuario.tipo_usuario, // Mapear tipo_usuario para role
           timestamp: new Date().getTime()
         }));
         
@@ -174,6 +174,9 @@ export default function LoginPage() {
                 <div className="text-gray-600">Senha: 123456</div>
               </div>
               <div className="pt-2 border-t border-gray-200">
+                <div className="font-semibold text-gray-700">Paciente:</div>
+                <div className="text-gray-600">CPF: 010.101.010-10</div>
+                <div className="text-gray-600">Senha: teste123</div>
               </div>
             </div>
           </div>

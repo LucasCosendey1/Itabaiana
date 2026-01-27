@@ -38,7 +38,7 @@ export async function GET(request) {
     let resultado;
 
     if (isCPF) {
-      // Busca por CPF
+      // Busca por CPF - compara apenas números
       resultado = await client.query(
         `SELECT 
           u.id as usuario_id,
@@ -57,9 +57,11 @@ export async function GET(request) {
           p.alergias
         FROM usuarios u
         INNER JOIN pacientes p ON u.id = p.usuario_id
-        WHERE u.cpf LIKE $1 AND u.tipo_usuario = 'paciente' AND u.ativo = true
+        WHERE REPLACE(REPLACE(REPLACE(u.cpf, '.', ''), '-', ''), ' ', '') = $1 
+        AND u.tipo_usuario = 'paciente' 
+        AND u.ativo = true
         LIMIT 1`,
-        [`%${apenasNumeros}%`]
+        [apenasNumeros]
       );
     } else {
       // Busca por nome
