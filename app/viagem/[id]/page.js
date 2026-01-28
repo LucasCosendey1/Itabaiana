@@ -298,27 +298,38 @@ export default function DetalhesViagemPage() {
         </div>
 
         {/* Botões de Ação */}
-        <div className="space-y-3">
-          {/* Botão Adicionar Paciente */}
-          <button
-            onClick={handleAdicionarPaciente}
-            disabled={viagemLotada}
-            className={`w-full py-4 rounded-lg font-semibold transition-all ${
-              viagemLotada
-                ? 'bg-gray-400 cursor-not-allowed text-white'
-                : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg'
-            }`}
-          >
-            {viagemLotada ? 'Viagem Lotada' : '+ Adicionar Paciente à Viagem'}
-          </button>
+<div className="space-y-3">
+  {/* NOVO: Botão Baixar Comprovante */}
+  <button
+    onClick={() => window.open(`/api/gerar-comprovante/${params.id}`, '_blank')}
+    className="w-full py-4 rounded-lg font-semibold transition-all bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+  >
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+    Baixar Comprovante PDF
+  </button>
 
-          {/* Botão Voltar */}
-          <button
-            onClick={() => router.push('/gerenciar-viagens')}
-            className="w-full py-4 rounded-lg font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200"
-          >
-            Voltar para Gerenciar Viagens
-          </button>
+  {/* Botão Adicionar Paciente */}
+  <button
+    onClick={handleAdicionarPaciente}
+    disabled={viagemLotada}
+    className={`w-full py-4 rounded-lg font-semibold transition-all ${
+      viagemLotada
+        ? 'bg-gray-400 cursor-not-allowed text-white'
+        : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg'
+    }`}
+  >
+    {viagemLotada ? 'Viagem Lotada' : '+ Adicionar Paciente à Viagem'}
+  </button>
+
+  {/* Botão Voltar */}
+  <button
+    onClick={() => router.push('/gerenciar-viagens')}
+    className="w-full py-4 rounded-lg font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200"
+  >
+    Voltar para Gerenciar Viagens
+  </button>
         </div>
       </main>
     </div>

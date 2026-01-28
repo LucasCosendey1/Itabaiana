@@ -92,20 +92,9 @@ export default function BuscaPage() {
 
       if (response.ok) {
         if (data.pacientes && data.pacientes.length > 0) {
-          if (data.pacientes.length === 1) {
-            // Se encontrou apenas 1, seleciona automaticamente
-            const paciente = data.pacientes[0];
-            setPacienteSelecionado(paciente);
-            setViagens(paciente.viagens || []);
-            
-            if (!paciente.viagens || paciente.viagens.length === 0) {
-              setMensagem('Paciente encontrado, mas não há viagens cadastradas.');
-            }
-          } else {
-            // Se encontrou vários, mostra lista para escolher
-            setPacientes(data.pacientes);
-            setMensagem(`${data.pacientes.length} pacientes encontrados. Selecione um:`);
-          }
+          // SEMPRE mostra a lista de pacientes, nunca seleciona automaticamente
+          setPacientes(data.pacientes);
+          setMensagem(`${data.pacientes.length} paciente(s) encontrado(s). Clique em um para ver as viagens:`);
         } else {
           setMensagem('Nenhum paciente encontrado com esse nome ou CPF');
         }
@@ -123,13 +112,21 @@ export default function BuscaPage() {
   const handleSelecionarPaciente = (paciente) => {
     setPacienteSelecionado(paciente);
     setViagens(paciente.viagens || []);
-    setPacientes([]);
+    setPacientes([]); // Limpa a lista de pacientes
+    setBusca(''); // Limpa o campo de busca
     
     if (!paciente.viagens || paciente.viagens.length === 0) {
-      setMensagem('Paciente selecionado, mas não há viagens cadastradas.');
+      setMensagem('Este paciente não possui viagens cadastradas.');
     } else {
       setMensagem('');
     }
+  };
+
+  const handleVoltarParaBusca = () => {
+    setPacienteSelecionado(null);
+    setViagens([]);
+    setMensagem('');
+    setBusca('');
   };
 
   const handleVerDetalhes = (viagem) => {
@@ -179,7 +176,7 @@ export default function BuscaPage() {
         )}
 
         {/* Card de Busca - Apenas para administradores */}
-        {usuarioLogado?.role !== 'paciente' && (
+        {usuarioLogado?.role !== 'paciente' && !pacienteSelecionado && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <div className="space-y-4">
               {/* Input de busca */}
@@ -274,40 +271,65 @@ export default function BuscaPage() {
           </div>
         )}
 
-        {/* Lista de pacientes (quando encontra vários) */}
+        {/* Lista de pacientes encontrados (SEMPRE mostra quando houver resultados) */}
         {pacientes.length > 0 && (
           <div className="space-y-3 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Selecione o paciente:
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {pacientes.length} paciente(s) encontrado(s)
+              </h2>
+              <button
+                onClick={() => setPacientes([])}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Limpar busca
+              </button>
+            </div>
             {pacientes.map((paciente) => (
               <div
                 key={paciente.cpf}
                 onClick={() => handleSelecionarPaciente(paciente)}
-                className="bg-white border border-gray-200 rounded-lg p-4 hover:border-primary hover:shadow-md transition-all cursor-pointer"
+                className="bg-white border-2 border-gray-200 rounded-lg p-5 hover:border-primary hover:shadow-lg transition-all cursor-pointer group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {getNomeResumido(paciente.nome_completo).charAt(0)}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-110 transition-transform">
+                      {getNomeResumido(paciente.nome_completo).charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900 text-lg mb-1">
+                        {paciente.nome_completo}
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zM4 4h3a3 3 0 006 0h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zm2.5 7a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm2.45 4a2.5 2.5 0 10-4.9 0h4.9zM12 9a1 1 0 100 2h3a1 1 0 100-2h-3zm-1 4a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clipRule="evenodd" />
+                          </svg>
+                          CPF: {paciente.cpf}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                            <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                          </svg>
+                          SUS: {paciente.cartao_sus}
+                        </span>
+                      </div>
+                      <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {paciente.viagens?.length || 0} viagem(ns)
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-semibold text-gray-900">
-                      {paciente.nome_completo}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      CPF: {paciente.cpf}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {paciente.viagens?.length || 0} viagem(ns) cadastrada(s)
-                    </div>
-                  </div>
+                  <svg className="w-6 h-6 text-gray-400 group-hover:text-primary group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Informações do próprio paciente */}
+        {/* Informações do paciente selecionado (para pacientes logados) */}
         {pacienteSelecionado && usuarioLogado?.role === 'paciente' && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-3">
@@ -322,6 +344,43 @@ export default function BuscaPage() {
                   Suas viagens cadastradas
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Informações do paciente selecionado (para administradores) */}
+        {pacienteSelecionado && usuarioLogado?.role === 'administrador' && (
+          <div className="bg-gradient-to-r from-primary to-blue-600 text-white rounded-lg shadow-lg p-6 mb-6">
+            <button
+              onClick={handleVoltarParaBusca}
+              className="mb-4 flex items-center gap-2 text-blue-100 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Voltar para busca
+            </button>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                  {getNomeResumido(pacienteSelecionado.nome_completo).charAt(0)}
+                </div>
+                <div>
+                  <div className="font-bold text-xl mb-1">
+                    {pacienteSelecionado.nome_completo}
+                  </div>
+                  <div className="text-blue-100 text-sm">
+                    CPF: {pacienteSelecionado.cpf} • SUS: {pacienteSelecionado.cartao_sus}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => router.push(`/paciente/${pacienteSelecionado.cpf}`)}
+                className="px-4 py-2 bg-white text-primary rounded-lg hover:bg-blue-50 transition-all text-sm font-medium"
+              >
+                Ver perfil completo →
+              </button>
             </div>
           </div>
         )}
@@ -360,8 +419,11 @@ export default function BuscaPage() {
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
-            <p className="text-gray-500 text-lg">
+            <p className="text-gray-500 text-lg mb-2">
               Digite um nome ou CPF para buscar
+            </p>
+            <p className="text-gray-400 text-sm">
+              Exemplo: "Lucas" ou "010.101.010-10"
             </p>
           </div>
         )}
