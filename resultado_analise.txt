@@ -1,0 +1,419 @@
+       table_name       | table_type 
+------------------------+------------
+ administradores        | BASE TABLE
+ historico_viagens      | BASE TABLE
+ medicos                | BASE TABLE
+ motoristas             | BASE TABLE
+ onibus                 | BASE TABLE
+ pacientes              | BASE TABLE
+ usuarios               | BASE TABLE
+ viagem_pacientes       | BASE TABLE
+ viagens                | BASE TABLE
+ vw_medicos_completo    | VIEW
+ vw_motoristas_completo | VIEW
+ vw_pacientes_completo  | VIEW
+ vw_viagens_completo    | VIEW
+(13 linhas)
+
+   column_name    |          data_type          | character_maximum_length | is_nullable |            column_default            
+------------------+-----------------------------+--------------------------+-------------+--------------------------------------
+ id               | integer                     |                          | NO          | nextval('usuarios_id_seq'::regclass)
+ cpf              | character varying           |                       14 | NO          | 
+ nome_completo    | character varying           |                      255 | NO          | 
+ email            | character varying           |                      255 | NO          | 
+ telefone         | character varying           |                       20 | NO          | 
+ senha_hash       | character varying           |                      255 | NO          | 
+ endereco         | text                        |                          | NO          | 
+ cep              | character varying           |                       10 | NO          | 
+ tipo_usuario     | character varying           |                       20 | NO          | 
+ ativo            | boolean                     |                          | YES         | true
+ data_cadastro    | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+ data_atualizacao | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+(12 linhas)
+
+     column_name     |          data_type          | character_maximum_length | is_nullable |            column_default             
+---------------------+-----------------------------+--------------------------+-------------+---------------------------------------
+ id                  | integer                     |                          | NO          | nextval('pacientes_id_seq'::regclass)
+ usuario_id          | integer                     |                          | NO          | 
+ cartao_sus          | character varying           |                       20 | NO          | 
+ nome_pai            | character varying           |                      255 | YES         | 
+ nome_mae            | character varying           |                      255 | NO          | 
+ data_nascimento     | date                        |                          | NO          | 
+ tipo_sanguineo      | character varying           |                        5 | YES         | 
+ alergias            | text                        |                          | YES         | 
+ observacoes_medicas | text                        |                          | YES         | 
+ data_cadastro       | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+(10 linhas)
+
+  column_name  |          data_type          | character_maximum_length | is_nullable |               column_default                
+---------------+-----------------------------+--------------------------+-------------+---------------------------------------------
+ id            | integer                     |                          | NO          | nextval('administradores_id_seq'::regclass)
+ usuario_id    | integer                     |                          | NO          | 
+ cargo         | character varying           |                      100 | NO          | 
+ nivel_acesso  | integer                     |                          | YES         | 1
+ setor         | character varying           |                      100 | YES         | 
+ data_cadastro | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+(6 linhas)
+
+     column_name     |          data_type          | character_maximum_length | is_nullable |           column_default            
+---------------------+-----------------------------+--------------------------+-------------+-------------------------------------
+ id                  | integer                     |                          | NO          | nextval('medicos_id_seq'::regclass)
+ usuario_id          | integer                     |                          | NO          | 
+ crm                 | character varying           |                       20 | NO          | 
+ especializacao      | character varying           |                      255 | NO          | 
+ hospital_vinculado  | character varying           |                      255 | YES         | 
+ dias_atendimento    | character varying           |                      100 | YES         | 
+ horario_atendimento | character varying           |                      100 | YES         | 
+ data_cadastro       | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+(8 linhas)
+
+      column_name       |          data_type          | character_maximum_length | is_nullable |             column_default             
+------------------------+-----------------------------+--------------------------+-------------+----------------------------------------
+ id                     | integer                     |                          | NO          | nextval('motoristas_id_seq'::regclass)
+ usuario_id             | integer                     |                          | NO          | 
+ cnh                    | character varying           |                       20 | NO          | 
+ categoria_cnh          | character varying           |                        5 | NO          | 
+ validade_cnh           | date                        |                          | NO          | 
+ veiculo_placa          | character varying           |                       10 | YES         | 
+ veiculo_modelo         | character varying           |                      100 | YES         | 
+ capacidade_passageiros | integer                     |                          | YES         | 
+ disponivel             | boolean                     |                          | YES         | true
+ data_cadastro          | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+(10 linhas)
+
+      column_name       |          data_type          | character_maximum_length | is_nullable |           column_default           
+------------------------+-----------------------------+--------------------------+-------------+------------------------------------
+ id                     | integer                     |                          | NO          | nextval('onibus_id_seq'::regclass)
+ placa                  | character varying           |                        8 | NO          | 
+ modelo                 | character varying           |                      100 | NO          | 
+ ano                    | integer                     |                          | NO          | 
+ capacidade_passageiros | integer                     |                          | NO          | 
+ cor                    | character varying           |                       50 | NO          | 
+ disponivel             | boolean                     |                          | YES         | true
+ created_at             | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+ updated_at             | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+(9 linhas)
+
+       column_name        |          data_type          | character_maximum_length | is_nullable |           column_default            
+--------------------------+-----------------------------+--------------------------+-------------+-------------------------------------
+ id                       | integer                     |                          | NO          | nextval('viagens_id_seq'::regclass)
+ codigo_viagem            | character varying           |                       20 | NO          | 
+ paciente_id              | integer                     |                          | YES         | 
+ medico_id                | integer                     |                          | YES         | 
+ motorista_id             | integer                     |                          | YES         | 
+ motivo                   | text                        |                          | YES         | 
+ hospital_destino         | character varying           |                      255 | NO          | 
+ endereco_destino         | text                        |                          | YES         | 
+ data_viagem              | date                        |                          | NO          | 
+ horario_saida            | time without time zone      |                          | NO          | 
+ horario_consulta         | time without time zone      |                          | YES         | 
+ horario_retorno_previsto | time without time zone      |                          | YES         | 
+ status                   | character varying           |                       20 | YES         | 'pendente'::character varying
+ confirmado_em            | timestamp without time zone |                          | YES         | 
+ observacoes              | text                        |                          | YES         | 
+ criado_por               | integer                     |                          | YES         | 
+ data_cadastro            | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+ data_atualizacao         | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+ numero_vagas             | integer                     |                          | YES         | 1
+ onibus_id                | integer                     |                          | YES         | 
+(20 linhas)
+
+   column_name    |          data_type          | character_maximum_length | is_nullable |                column_default                
+------------------+-----------------------------+--------------------------+-------------+----------------------------------------------
+ id               | integer                     |                          | NO          | nextval('viagem_pacientes_id_seq'::regclass)
+ viagem_id        | integer                     |                          | NO          | 
+ paciente_id      | integer                     |                          | NO          | 
+ medico_id        | integer                     |                          | YES         | 
+ motivo           | text                        |                          | NO          | 
+ horario_consulta | time without time zone      |                          | YES         | 
+ observacoes      | text                        |                          | YES         | 
+ data_cadastro    | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+(8 linhas)
+
+    table_name     |              constraint_name               | constraint_type |  column_name  | foreign_table_name |  foreign_column_name   
+-------------------+--------------------------------------------+-----------------+---------------+--------------------+------------------------
+ administradores   | administradores_nivel_acesso_check         | CHECK           |               | administradores    | nivel_acesso
+ administradores   | 24782_24884_1_not_null                     | CHECK           |               |                    | 
+ administradores   | 24782_24884_3_not_null                     | CHECK           |               |                    | 
+ administradores   | 24782_24884_2_not_null                     | CHECK           |               |                    | 
+ administradores   | administradores_usuario_id_fkey            | FOREIGN KEY     | usuario_id    | usuarios           | id
+ administradores   | administradores_pkey                       | PRIMARY KEY     | id            | administradores    | id
+ administradores   | administradores_usuario_id_key             | UNIQUE          | usuario_id    | administradores    | usuario_id
+ historico_viagens | 24782_24944_1_not_null                     | CHECK           |               |                    | 
+ historico_viagens | 24782_24944_2_not_null                     | CHECK           |               |                    | 
+ historico_viagens | 24782_24944_4_not_null                     | CHECK           |               |                    | 
+ historico_viagens | historico_viagens_viagem_id_fkey           | FOREIGN KEY     | viagem_id     | viagens            | id
+ historico_viagens | historico_viagens_alterado_por_fkey        | FOREIGN KEY     | alterado_por  | usuarios           | id
+ historico_viagens | historico_viagens_pkey                     | PRIMARY KEY     | id            | historico_viagens  | id
+ medicos           | 24782_24838_4_not_null                     | CHECK           |               |                    | 
+ medicos           | 24782_24838_1_not_null                     | CHECK           |               |                    | 
+ medicos           | 24782_24838_2_not_null                     | CHECK           |               |                    | 
+ medicos           | 24782_24838_3_not_null                     | CHECK           |               |                    | 
+ medicos           | medicos_usuario_id_fkey                    | FOREIGN KEY     | usuario_id    | usuarios           | id
+ medicos           | medicos_pkey                               | PRIMARY KEY     | id            | medicos            | id
+ medicos           | medicos_crm_key                            | UNIQUE          | crm           | medicos            | crm
+ medicos           | medicos_usuario_id_key                     | UNIQUE          | usuario_id    | medicos            | usuario_id
+ motoristas        | 24782_24860_2_not_null                     | CHECK           |               |                    | 
+ motoristas        | 24782_24860_5_not_null                     | CHECK           |               |                    | 
+ motoristas        | 24782_24860_4_not_null                     | CHECK           |               |                    | 
+ motoristas        | 24782_24860_3_not_null                     | CHECK           |               |                    | 
+ motoristas        | motoristas_capacidade_passageiros_check    | CHECK           |               | motoristas         | capacidade_passageiros
+ motoristas        | motoristas_validade_cnh_check              | CHECK           |               | motoristas         | validade_cnh
+ motoristas        | motoristas_categoria_cnh_check             | CHECK           |               | motoristas         | categoria_cnh
+ motoristas        | 24782_24860_1_not_null                     | CHECK           |               |                    | 
+ motoristas        | motoristas_usuario_id_fkey                 | FOREIGN KEY     | usuario_id    | usuarios           | id
+ motoristas        | motoristas_pkey                            | PRIMARY KEY     | id            | motoristas         | id
+ motoristas        | motoristas_usuario_id_key                  | UNIQUE          | usuario_id    | motoristas         | usuario_id
+ motoristas        | motoristas_cnh_key                         | UNIQUE          | cnh           | motoristas         | cnh
+ onibus            | 24782_49153_5_not_null                     | CHECK           |               |                    | 
+ onibus            | 24782_49153_2_not_null                     | CHECK           |               |                    | 
+ onibus            | 24782_49153_3_not_null                     | CHECK           |               |                    | 
+ onibus            | 24782_49153_4_not_null                     | CHECK           |               |                    | 
+ onibus            | onibus_ano_check                           | CHECK           |               | onibus             | ano
+ onibus            | onibus_capacidade_passageiros_check        | CHECK           |               | onibus             | capacidade_passageiros
+ onibus            | 24782_49153_6_not_null                     | CHECK           |               |                    | 
+ onibus            | 24782_49153_1_not_null                     | CHECK           |               |                    | 
+ onibus            | onibus_pkey                                | PRIMARY KEY     | id            | onibus             | id
+ onibus            | onibus_placa_key                           | UNIQUE          | placa         | onibus             | placa
+ pacientes         | 24782_24816_1_not_null                     | CHECK           |               |                    | 
+ pacientes         | 24782_24816_6_not_null                     | CHECK           |               |                    | 
+ pacientes         | 24782_24816_3_not_null                     | CHECK           |               |                    | 
+ pacientes         | 24782_24816_5_not_null                     | CHECK           |               |                    | 
+ pacientes         | 24782_24816_2_not_null                     | CHECK           |               |                    | 
+ pacientes         | pacientes_data_nascimento_check            | CHECK           |               | pacientes          | data_nascimento
+ pacientes         | pacientes_usuario_id_fkey                  | FOREIGN KEY     | usuario_id    | usuarios           | id
+ pacientes         | pacientes_pkey                             | PRIMARY KEY     | id            | pacientes          | id
+ pacientes         | pacientes_cartao_sus_key                   | UNIQUE          | cartao_sus    | pacientes          | cartao_sus
+ pacientes         | pacientes_usuario_id_key                   | UNIQUE          | usuario_id    | pacientes          | usuario_id
+ usuarios          | 24782_24795_8_not_null                     | CHECK           |               |                    | 
+ usuarios          | usuarios_email_check                       | CHECK           |               | usuarios           | email
+ usuarios          | 24782_24795_1_not_null                     | CHECK           |               |                    | 
+ usuarios          | 24782_24795_2_not_null                     | CHECK           |               |                    | 
+ usuarios          | 24782_24795_3_not_null                     | CHECK           |               |                    | 
+ usuarios          | 24782_24795_4_not_null                     | CHECK           |               |                    | 
+ usuarios          | 24782_24795_5_not_null                     | CHECK           |               |                    | 
+ usuarios          | 24782_24795_6_not_null                     | CHECK           |               |                    | 
+ usuarios          | 24782_24795_7_not_null                     | CHECK           |               |                    | 
+ usuarios          | usuarios_tipo_usuario_check                | CHECK           |               | usuarios           | tipo_usuario
+ usuarios          | 24782_24795_9_not_null                     | CHECK           |               |                    | 
+ usuarios          | usuarios_pkey                              | PRIMARY KEY     | id            | usuarios           | id
+ usuarios          | usuarios_email_key                         | UNIQUE          | email         | usuarios           | email
+ usuarios          | usuarios_cpf_key                           | UNIQUE          | cpf           | usuarios           | cpf
+ viagem_pacientes  | 24782_40962_5_not_null                     | CHECK           |               |                    | 
+ viagem_pacientes  | 24782_40962_1_not_null                     | CHECK           |               |                    | 
+ viagem_pacientes  | 24782_40962_2_not_null                     | CHECK           |               |                    | 
+ viagem_pacientes  | 24782_40962_3_not_null                     | CHECK           |               |                    | 
+ viagem_pacientes  | viagem_pacientes_paciente_id_fkey          | FOREIGN KEY     | paciente_id   | pacientes          | id
+ viagem_pacientes  | viagem_pacientes_viagem_id_fkey            | FOREIGN KEY     | viagem_id     | viagens            | id
+ viagem_pacientes  | viagem_pacientes_medico_id_fkey            | FOREIGN KEY     | medico_id     | medicos            | id
+ viagem_pacientes  | viagem_pacientes_pkey                      | PRIMARY KEY     | id            | viagem_pacientes   | id
+ viagem_pacientes  | viagem_pacientes_viagem_id_paciente_id_key | UNIQUE          | paciente_id   | viagem_pacientes   | paciente_id
+ viagem_pacientes  | viagem_pacientes_viagem_id_paciente_id_key | UNIQUE          | viagem_id     | viagem_pacientes   | viagem_id
+ viagem_pacientes  | viagem_pacientes_viagem_id_paciente_id_key | UNIQUE          | viagem_id     | viagem_pacientes   | paciente_id
+ viagem_pacientes  | viagem_pacientes_viagem_id_paciente_id_key | UNIQUE          | paciente_id   | viagem_pacientes   | viagem_id
+ viagens           | 24782_24902_7_not_null                     | CHECK           |               |                    | 
+ viagens           | viagens_check                              | CHECK           |               | viagens            | horario_saida
+ viagens           | viagens_check                              | CHECK           |               | viagens            | horario_consulta
+ viagens           | viagens_data_viagem_check                  | CHECK           |               | viagens            | data_viagem
+ viagens           | viagens_status_check                       | CHECK           |               | viagens            | status
+ viagens           | 24782_24902_1_not_null                     | CHECK           |               |                    | 
+ viagens           | 24782_24902_2_not_null                     | CHECK           |               |                    | 
+ viagens           | 24782_24902_9_not_null                     | CHECK           |               |                    | 
+ viagens           | 24782_24902_10_not_null                    | CHECK           |               |                    | 
+ viagens           | viagens_paciente_id_fkey                   | FOREIGN KEY     | paciente_id   | pacientes          | id
+ viagens           | viagens_motorista_id_fkey                  | FOREIGN KEY     | motorista_id  | motoristas         | id
+ viagens           | viagens_criado_por_fkey                    | FOREIGN KEY     | criado_por    | administradores    | id
+ viagens           | viagens_onibus_id_fkey                     | FOREIGN KEY     | onibus_id     | onibus             | id
+ viagens           | viagens_medico_id_fkey                     | FOREIGN KEY     | medico_id     | medicos            | id
+ viagens           | viagens_pkey                               | PRIMARY KEY     | id            | viagens            | id
+ viagens           | viagens_codigo_viagem_key                  | UNIQUE          | codigo_viagem | viagens            | codigo_viagem
+(95 linhas)
+
+     tablename     |                 indexname                  |                                                            indexdef                                                            
+-------------------+--------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------
+ administradores   | administradores_pkey                       | CREATE UNIQUE INDEX administradores_pkey ON public.administradores USING btree (id)
+ administradores   | administradores_usuario_id_key             | CREATE UNIQUE INDEX administradores_usuario_id_key ON public.administradores USING btree (usuario_id)
+ administradores   | idx_administradores_usuario_id             | CREATE INDEX idx_administradores_usuario_id ON public.administradores USING btree (usuario_id)
+ historico_viagens | historico_viagens_pkey                     | CREATE UNIQUE INDEX historico_viagens_pkey ON public.historico_viagens USING btree (id)
+ historico_viagens | idx_historico_viagens_viagem_id            | CREATE INDEX idx_historico_viagens_viagem_id ON public.historico_viagens USING btree (viagem_id)
+ medicos           | idx_medicos_crm                            | CREATE INDEX idx_medicos_crm ON public.medicos USING btree (crm)
+ medicos           | idx_medicos_especializacao                 | CREATE INDEX idx_medicos_especializacao ON public.medicos USING btree (especializacao)
+ medicos           | idx_medicos_usuario_id                     | CREATE INDEX idx_medicos_usuario_id ON public.medicos USING btree (usuario_id)
+ medicos           | medicos_crm_key                            | CREATE UNIQUE INDEX medicos_crm_key ON public.medicos USING btree (crm)
+ medicos           | medicos_pkey                               | CREATE UNIQUE INDEX medicos_pkey ON public.medicos USING btree (id)
+ medicos           | medicos_usuario_id_key                     | CREATE UNIQUE INDEX medicos_usuario_id_key ON public.medicos USING btree (usuario_id)
+ motoristas        | idx_motoristas_cnh                         | CREATE INDEX idx_motoristas_cnh ON public.motoristas USING btree (cnh)
+ motoristas        | idx_motoristas_disponivel                  | CREATE INDEX idx_motoristas_disponivel ON public.motoristas USING btree (disponivel)
+ motoristas        | idx_motoristas_usuario_id                  | CREATE INDEX idx_motoristas_usuario_id ON public.motoristas USING btree (usuario_id)
+ motoristas        | motoristas_cnh_key                         | CREATE UNIQUE INDEX motoristas_cnh_key ON public.motoristas USING btree (cnh)
+ motoristas        | motoristas_pkey                            | CREATE UNIQUE INDEX motoristas_pkey ON public.motoristas USING btree (id)
+ motoristas        | motoristas_usuario_id_key                  | CREATE UNIQUE INDEX motoristas_usuario_id_key ON public.motoristas USING btree (usuario_id)
+ onibus            | idx_onibus_placa                           | CREATE INDEX idx_onibus_placa ON public.onibus USING btree (placa)
+ onibus            | onibus_pkey                                | CREATE UNIQUE INDEX onibus_pkey ON public.onibus USING btree (id)
+ onibus            | onibus_placa_key                           | CREATE UNIQUE INDEX onibus_placa_key ON public.onibus USING btree (placa)
+ pacientes         | idx_pacientes_cartao_sus                   | CREATE INDEX idx_pacientes_cartao_sus ON public.pacientes USING btree (cartao_sus)
+ pacientes         | idx_pacientes_usuario_id                   | CREATE INDEX idx_pacientes_usuario_id ON public.pacientes USING btree (usuario_id)
+ pacientes         | pacientes_cartao_sus_key                   | CREATE UNIQUE INDEX pacientes_cartao_sus_key ON public.pacientes USING btree (cartao_sus)
+ pacientes         | pacientes_pkey                             | CREATE UNIQUE INDEX pacientes_pkey ON public.pacientes USING btree (id)
+ pacientes         | pacientes_usuario_id_key                   | CREATE UNIQUE INDEX pacientes_usuario_id_key ON public.pacientes USING btree (usuario_id)
+ usuarios          | idx_usuarios_cpf                           | CREATE INDEX idx_usuarios_cpf ON public.usuarios USING btree (cpf)
+ usuarios          | idx_usuarios_email                         | CREATE INDEX idx_usuarios_email ON public.usuarios USING btree (email)
+ usuarios          | idx_usuarios_tipo                          | CREATE INDEX idx_usuarios_tipo ON public.usuarios USING btree (tipo_usuario)
+ usuarios          | usuarios_cpf_key                           | CREATE UNIQUE INDEX usuarios_cpf_key ON public.usuarios USING btree (cpf)
+ usuarios          | usuarios_email_key                         | CREATE UNIQUE INDEX usuarios_email_key ON public.usuarios USING btree (email)
+ usuarios          | usuarios_pkey                              | CREATE UNIQUE INDEX usuarios_pkey ON public.usuarios USING btree (id)
+ viagem_pacientes  | viagem_pacientes_pkey                      | CREATE UNIQUE INDEX viagem_pacientes_pkey ON public.viagem_pacientes USING btree (id)
+ viagem_pacientes  | viagem_pacientes_viagem_id_paciente_id_key | CREATE UNIQUE INDEX viagem_pacientes_viagem_id_paciente_id_key ON public.viagem_pacientes USING btree (viagem_id, paciente_id)
+ viagens           | idx_viagens_data                           | CREATE INDEX idx_viagens_data ON public.viagens USING btree (data_viagem)
+ viagens           | idx_viagens_medico_id                      | CREATE INDEX idx_viagens_medico_id ON public.viagens USING btree (medico_id)
+ viagens           | idx_viagens_motorista_id                   | CREATE INDEX idx_viagens_motorista_id ON public.viagens USING btree (motorista_id)
+ viagens           | idx_viagens_onibus                         | CREATE INDEX idx_viagens_onibus ON public.viagens USING btree (onibus_id)
+ viagens           | idx_viagens_paciente_id                    | CREATE INDEX idx_viagens_paciente_id ON public.viagens USING btree (paciente_id)
+ viagens           | idx_viagens_status                         | CREATE INDEX idx_viagens_status ON public.viagens USING btree (status)
+ viagens           | viagens_codigo_viagem_key                  | CREATE UNIQUE INDEX viagens_codigo_viagem_key ON public.viagens USING btree (codigo_viagem)
+ viagens           | viagens_pkey                               | CREATE UNIQUE INDEX viagens_pkey ON public.viagens USING btree (id)
+(41 linhas)
+
+      tabela      | total 
+------------------+-------
+ administradores  |     3
+ medicos          |     3
+ motoristas       |     2
+ onibus           |     4
+ pacientes        |     5
+ usuarios         |    13
+ viagem_pacientes |     1
+ viagens          |    13
+(8 linhas)
+
+ id |      cpf       |      nome_completo      |              email               | tipo_usuario  | ativo 
+----+----------------+-------------------------+----------------------------------+---------------+-------
+  1 | 123.456.789-00 | João Silva              | joao.silva@itabaiana.pb.gov.br   | administrador | t
+  2 | 987.654.321-00 | Maria Santos            | maria.santos@itabaiana.pb.gov.br | administrador | t
+  3 | 111.111.111-11 | Carlos Eduardo Oliveira | carlos.motorista@email.com       | motorista     | t
+  4 | 222.222.222-22 | Pedro Henrique Souza    | pedro.motorista@email.com        | motorista     | t
+  5 | 333.333.333-33 | Dr. Roberto Fernandes   | roberto.fernandes@hospital.com   | medico        | t
+(5 linhas)
+
+ id |         nome_completo         |      cpf       |     cartao_sus     | data_nascimento | tipo_sanguineo 
+----+-------------------------------+----------------+--------------------+-----------------+----------------
+  1 | Ana Maria da Silva            | 111.222.333-44 | 123 4567 8901 2345 | 1965-03-15      | A+
+  2 | Carlos Eduardo Santos         | 222.333.444-55 | 234 5678 9012 3456 | 1978-07-22      | O+
+  3 | Francisca de Souza Oliveira   | 333.444.555-66 | 345 6789 0123 4567 | 1952-11-10      | B+
+  4 | Pedro Henrique Almeida        | 444.555.666-77 | 456 7890 1234 5678 | 1990-09-05      | AB+
+  5 | Lucas Edson da Silva Cosendey | 010.101.010-10 | 111 1111 1111 1111 | 2004-08-09      | 
+(5 linhas)
+
+ id | nome_completo |      cpf       |           cargo           | nivel_acesso 
+----+---------------+----------------+---------------------------+--------------
+  1 | João Silva    | 123.456.789-00 | Coordenador de Transporte |            3
+  2 | Maria Santos  | 987.654.321-00 | Supervisora de Saúde      |            2
+  3 | Usuario Teste | 000.000.000-00 | Teste                     |            3
+(3 linhas)
+
+ id |     nome_completo     |     crm      |  especializacao   |          hospital_vinculado          
+----+-----------------------+--------------+-------------------+--------------------------------------
+  1 | Dr. Roberto Fernandes | CRM/PB 12345 | Oftalmologia      | Hospital Regional de Campina Grande
+  2 | Dra. Juliana Lima     | CRM/PB 54321 | Gastroenterologia | Hospital Universitário - João Pessoa
+  3 | Dr. Antônio Carlos    | CRM/PB 67890 | Ortopedia         | Hospital de Trauma de Campina Grande
+(3 linhas)
+
+ id |      nome_completo      |     cnh     |       veiculo_modelo       | veiculo_placa | disponivel 
+----+-------------------------+-------------+----------------------------+---------------+------------
+  1 | Carlos Eduardo Oliveira | 12345678901 | Van Mercedes-Benz Sprinter | ABC-1234      | t
+  2 | Pedro Henrique Souza    | 09876543210 | Micro-ônibus Volare        | XYZ-5678      | t
+(2 linhas)
+
+ id |  placa   |        modelo         | ano  | capacidade_passageiros |   cor    | disponivel 
+----+----------+-----------------------+------+------------------------+----------+------------
+  1 | ABC-1234 | Mercedes-Benz OF-1721 | 2018 |                     45 | Branco   | t
+  2 | XYZ-5678 | Volkswagen 17.230     | 2020 |                     50 | Prata    | t
+  3 | DEF-9012 | Iveco CityClass 70C17 | 2019 |                     40 | Azul     | t
+  7 | ALE-K121 | Geladinho TESTE       | 2017 |                     15 | Vermelho | t
+(4 linhas)
+
+ id | codigo_viagem | data_viagem | horario_saida |               hospital_destino                | numero_vagas |  status  | motorista_id | onibus_id 
+----+---------------+-------------+---------------+-----------------------------------------------+--------------+----------+--------------+-----------
+ 10 | V010          | 2026-03-05  | 06:00:00      | Hospital de Trauma de Campina Grande          |            1 | pendente |            2 |          
+  9 | V009          | 2026-03-01  | 04:00:00      | Hospital de Emergência e Trauma - João Pessoa |            1 | pendente |              |          
+ 15 | V2026003      | 2026-02-25  | 06:00:00      | Hospital de Trauma Campina Grande             |           18 | pendente |              |          
+  8 | V008          | 2026-02-25  | 07:30:00      | Hospital Regional de Campina Grande           |            1 | pendente |            1 |          
+  5 | V005          | 2026-02-20  | 03:00:00      | Hospital de Emergência e Trauma - João Pessoa |            1 | pendente |              |          
+ 14 | V2026002      | 2026-02-20  | 05:30:00      | Hospital Universitario Joao Pessoa            |           15 | pendente |              |          
+ 13 | V2026001      | 2026-02-15  | 07:00:00      | Hospital Regional de Campina Grande           |           20 | pendente |              |          
+  4 | V004          | 2026-02-15  | 04:30:00      | Hospital Universitário - João Pessoa          |            1 | pendente |            2 |          
+  2 | V002          | 2026-02-10  | 05:30:00      | Hospital de Trauma de Campina Grande          |            1 | pendente |            1 |          
+  7 | V007          | 2026-02-08  | 05:00:00      | Hospital Universitário - João Pessoa          |            1 | pendente |            2 |          
+(10 linhas)
+
+ id | codigo_viagem |         paciente_nome         |      motivo       | horario_consulta 
+----+---------------+-------------------------------+-------------------+------------------
+  1 | V010          | Lucas Edson da Silva Cosendey | Cirurgia no nariz | 10:10:00
+(1 linha)
+
+ codigo_viagem | data_viagem |               hospital_destino                |        motorista        | onibus | total_pacientes | numero_vagas |  status  
+---------------+-------------+-----------------------------------------------+-------------------------+--------+-----------------+--------------+----------
+ V010          | 2026-03-05  | Hospital de Trauma de Campina Grande          | Pedro Henrique Souza    |        |               1 |            1 | pendente
+ V009          | 2026-03-01  | Hospital de Emergência e Trauma - João Pessoa |                         |        |               0 |            1 | pendente
+ V008          | 2026-02-25  | Hospital Regional de Campina Grande           | Carlos Eduardo Oliveira |        |               0 |            1 | pendente
+ V2026003      | 2026-02-25  | Hospital de Trauma Campina Grande             |                         |        |               0 |           18 | pendente
+ V2026002      | 2026-02-20  | Hospital Universitario Joao Pessoa            |                         |        |               0 |           15 | pendente
+ V005          | 2026-02-20  | Hospital de Emergência e Trauma - João Pessoa |                         |        |               0 |            1 | pendente
+ V004          | 2026-02-15  | Hospital Universitário - João Pessoa          | Pedro Henrique Souza    |        |               0 |            1 | pendente
+ V2026001      | 2026-02-15  | Hospital Regional de Campina Grande           |                         |        |               0 |           20 | pendente
+ V002          | 2026-02-10  | Hospital de Trauma de Campina Grande          | Carlos Eduardo Oliveira |        |               0 |            1 | pendente
+ V007          | 2026-02-08  | Hospital Universitário - João Pessoa          | Pedro Henrique Souza    |        |               0 |            1 | pendente
+(10 linhas)
+
+ codigo_viagem | data_viagem |               hospital_destino                | numero_vagas |   status   | total_pacientes 
+---------------+-------------+-----------------------------------------------+--------------+------------+-----------------
+ V009          | 2026-03-01  | Hospital de Emergência e Trauma - João Pessoa |            1 | pendente   |               0
+ V2026003      | 2026-02-25  | Hospital de Trauma Campina Grande             |           18 | pendente   |               0
+ V008          | 2026-02-25  | Hospital Regional de Campina Grande           |            1 | pendente   |               0
+ V2026002      | 2026-02-20  | Hospital Universitario Joao Pessoa            |           15 | pendente   |               0
+ V005          | 2026-02-20  | Hospital de Emergência e Trauma - João Pessoa |            1 | pendente   |               0
+ V004          | 2026-02-15  | Hospital Universitário - João Pessoa          |            1 | pendente   |               0
+ V2026001      | 2026-02-15  | Hospital Regional de Campina Grande           |           20 | pendente   |               0
+ V002          | 2026-02-10  | Hospital de Trauma de Campina Grande          |            1 | pendente   |               0
+ V007          | 2026-02-08  | Hospital Universitário - João Pessoa          |            1 | pendente   |               0
+ V001          | 2026-02-05  | Hospital Regional de Campina Grande           |            1 | pendente   |               0
+ V006          | 2026-02-03  | Hospital de Trauma de Campina Grande          |            1 | pendente   |               0
+ V003          | 2026-01-30  | Hospital Regional de Campina Grande           |            1 | confirmado |               0
+(12 linhas)
+
+ codigo_viagem | data_viagem |               hospital_destino                | numero_vagas | total_pacientes | vagas_disponiveis | situacao  
+---------------+-------------+-----------------------------------------------+--------------+-----------------+-------------------+-----------
+ V010          | 2026-03-05  | Hospital de Trauma de Campina Grande          |            1 |               1 |                 0 | LOTADA
+ V009          | 2026-03-01  | Hospital de Emergência e Trauma - João Pessoa |            1 |               0 |                 1 | COM VAGAS
+ V2026003      | 2026-02-25  | Hospital de Trauma Campina Grande             |           18 |               0 |                18 | COM VAGAS
+ V008          | 2026-02-25  | Hospital Regional de Campina Grande           |            1 |               0 |                 1 | COM VAGAS
+ V2026002      | 2026-02-20  | Hospital Universitario Joao Pessoa            |           15 |               0 |                15 | COM VAGAS
+ V005          | 2026-02-20  | Hospital de Emergência e Trauma - João Pessoa |            1 |               0 |                 1 | COM VAGAS
+ V004          | 2026-02-15  | Hospital Universitário - João Pessoa          |            1 |               0 |                 1 | COM VAGAS
+ V2026001      | 2026-02-15  | Hospital Regional de Campina Grande           |           20 |               0 |                20 | COM VAGAS
+ V002          | 2026-02-10  | Hospital de Trauma de Campina Grande          |            1 |               0 |                 1 | COM VAGAS
+ V007          | 2026-02-08  | Hospital Universitário - João Pessoa          |            1 |               0 |                 1 | COM VAGAS
+ V001          | 2026-02-05  | Hospital Regional de Campina Grande           |            1 |               0 |                 1 | COM VAGAS
+ V006          | 2026-02-03  | Hospital de Trauma de Campina Grande          |            1 |               0 |                 1 | COM VAGAS
+ V003          | 2026-01-30  | Hospital Regional de Campina Grande           |            1 |               0 |                 1 | COM VAGAS
+(13 linhas)
+
+ total_usuarios | total_pacientes | total_administradores | total_medicos | total_motoristas | total_onibus | total_viagens | total_associacoes 
+----------------+-----------------+-----------------------+---------------+------------------+--------------+---------------+-------------------
+             13 |               5 |                     3 |             3 |                2 |            4 |            13 |                 1
+(1 linha)
+
+   status   | total 
+------------+-------
+ pendente   |    12
+ confirmado |     1
+(2 linhas)
+
+ tipo_usuario  | total | ativos | inativos 
+---------------+-------+--------+----------
+ paciente      |     5 |      5 |        0
+ medico        |     3 |      3 |        0
+ administrador |     3 |      3 |        0
+ motorista     |     2 |      2 |        0
+(4 linhas)
+

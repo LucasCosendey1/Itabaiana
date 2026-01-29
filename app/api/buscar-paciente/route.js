@@ -48,21 +48,34 @@ export async function GET(request) {
           u.telefone,
           u.endereco,
           u.cep,
+          u.sexo,
           p.id as paciente_id,
           p.cartao_sus,
           p.nome_pai,
           p.nome_mae,
           p.data_nascimento,
           p.tipo_sanguineo,
-          p.alergias
+          p.alergias,
+          p.microarea,
+          p.responsavel_familiar,
+          -- UBS
+          ubs.id as ubs_id,
+          ubs.nome as ubs_nome,
+          -- Agente
+          acs.id as agente_id,
+          acs_usr.nome_completo as agente_nome
         FROM usuarios u
         INNER JOIN pacientes p ON u.id = p.usuario_id
+        LEFT JOIN ubs ON p.ubs_cadastro_id = ubs.id
+        LEFT JOIN agentes_comunitarios acs ON p.agente_id = acs.id
+        LEFT JOIN usuarios acs_usr ON acs.usuario_id = acs_usr.id
         WHERE REPLACE(REPLACE(REPLACE(u.cpf, '.', ''), '-', ''), ' ', '') = $1 
         AND u.tipo_usuario = 'paciente' 
         AND u.ativo = true
         LIMIT 1`,
         [apenasNumeros]
       );
+
     } else {
       // Busca por nome
       resultado = await client.query(
@@ -74,15 +87,27 @@ export async function GET(request) {
           u.telefone,
           u.endereco,
           u.cep,
+          u.sexo,
           p.id as paciente_id,
           p.cartao_sus,
           p.nome_pai,
           p.nome_mae,
           p.data_nascimento,
           p.tipo_sanguineo,
-          p.alergias
+          p.alergias,
+          p.microarea,
+          p.responsavel_familiar,
+          -- UBS
+          ubs.id as ubs_id,
+          ubs.nome as ubs_nome,
+          -- Agente
+          acs.id as agente_id,
+          acs_usr.nome_completo as agente_nome
         FROM usuarios u
         INNER JOIN pacientes p ON u.id = p.usuario_id
+        LEFT JOIN ubs ON p.ubs_cadastro_id = ubs.id
+        LEFT JOIN agentes_comunitarios acs ON p.agente_id = acs.id
+        LEFT JOIN usuarios acs_usr ON acs.usuario_id = acs_usr.id
         WHERE LOWER(u.nome_completo) LIKE LOWER($1) 
         AND u.tipo_usuario = 'paciente' 
         AND u.ativo = true
@@ -100,51 +125,53 @@ export async function GET(request) {
     }
 
     // Buscar viagens de cada paciente encontrado
-    const pacientesComViagens = await Promise.all(
-      resultado.rows.map(async (paciente) => {
-        const viagens = await client.query(
-          `SELECT 
-            v.id as viagem_id,
-            v.codigo_viagem,
-            TO_CHAR(v.data_viagem, 'YYYY-MM-DD') as data_viagem,
-            v.horario_saida,
-            v.status,
-            v.hospital_destino,
-            v.confirmado_em,
-            -- Dados da associação viagem-paciente
-            vp.motivo,
-            vp.horario_consulta,
-            vp.observacoes,
-            -- Médico
-            m_usr.nome_completo as medico_nome,
-            med.crm as medico_crm,
-            med.especializacao as medico_especializacao,
-            -- Motorista
-            mot_usr.nome_completo as motorista_nome,
-            mot.veiculo_placa,
-            mot.veiculo_modelo
-          FROM viagem_pacientes vp
-          INNER JOIN viagens v ON vp.viagem_id = v.id
-          LEFT JOIN medicos med ON vp.medico_id = med.id
-          LEFT JOIN usuarios m_usr ON med.usuario_id = m_usr.id
-          LEFT JOIN motoristas mot ON v.motorista_id = mot.id
-          LEFT JOIN usuarios mot_usr ON mot.usuario_id = mot_usr.id
-          WHERE vp.paciente_id = $1
-          ORDER BY 
-            CASE 
-              WHEN v.status IN ('pendente', 'confirmado') THEN 0
-              ELSE 1
-            END,
-            v.data_viagem DESC`,
-          [paciente.paciente_id]
-        );
+    // CORREÇÃO: Usar um loop sequencial ao invés de Promise.all com map
+    // O 'client' único não suporta múltiplas queries simultâneas
+    const pacientesComViagens = [];
 
-        return {
-          ...paciente,
-          viagens: viagens.rows
-        };
-      })
-    );
+    for (const paciente of resultado.rows) {
+      const viagens = await client.query(
+        `SELECT 
+          v.id as viagem_id,
+          v.codigo_viagem,
+          TO_CHAR(v.data_viagem, 'YYYY-MM-DD') as data_viagem,
+          v.horario_saida,
+          v.status,
+          v.hospital_destino,
+          v.confirmado_em,
+          -- Dados da associação viagem-paciente
+          vp.motivo,
+          vp.horario_consulta,
+          vp.observacoes,
+          -- Médico
+          m_usr.nome_completo as medico_nome,
+          med.crm as medico_crm,
+          med.especializacao as medico_especializacao,
+          -- Motorista
+          mot_usr.nome_completo as motorista_nome,
+          mot.veiculo_placa,
+          mot.veiculo_modelo
+        FROM viagem_pacientes vp
+        INNER JOIN viagens v ON vp.viagem_id = v.id
+        LEFT JOIN medicos med ON vp.medico_id = med.id
+        LEFT JOIN usuarios m_usr ON med.usuario_id = m_usr.id
+        LEFT JOIN motoristas mot ON v.motorista_id = mot.id
+        LEFT JOIN usuarios mot_usr ON mot.usuario_id = mot_usr.id
+        WHERE vp.paciente_id = $1
+        ORDER BY 
+          CASE 
+            WHEN v.status IN ('pendente', 'confirmado') THEN 0
+            ELSE 1
+          END,
+          v.data_viagem DESC`,
+        [paciente.paciente_id]
+      );
+
+      pacientesComViagens.push({
+        ...paciente,
+        viagens: viagens.rows
+      });
+    }
 
     return NextResponse.json(
       { 

@@ -130,10 +130,11 @@ export default function BuscaPage() {
   };
 
   const handleVerDetalhes = (viagem) => {
-    router.push(`/viagem/${viagem.codigo_viagem}`);
+    // CORREÇÃO: Usar viagem_id (que vem do banco) em vez do código, para garantir match com [id]
+    router.push(`/viagem/${viagem.viagem_id}`);
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleBuscar();
     }
@@ -188,7 +189,7 @@ export default function BuscaPage() {
                   type="text"
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   placeholder="Digite o nome ou CPF do paciente"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                 />
@@ -224,6 +225,16 @@ export default function BuscaPage() {
                     className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-medium shadow-md hover:shadow-lg"
                   >
                     Gerenciar Viagens
+                  </button>
+                  
+                  <button
+                    onClick={() => router.push('/cadastrar-paciente')}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Cadastrar Paciente
                   </button>
 
                   <button
@@ -376,7 +387,7 @@ export default function BuscaPage() {
                 </div>
               </div>
               <button
-                onClick={() => router.push(`/paciente/${pacienteSelecionado.cpf}`)}
+                onClick={() => router.push(`/paciente/${pacienteSelecionado.cpf.replace(/\D/g, '')}`)}
                 className="px-4 py-2 bg-white text-primary rounded-lg hover:bg-blue-50 transition-all text-sm font-medium"
               >
                 Ver perfil completo →

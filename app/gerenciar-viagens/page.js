@@ -190,8 +190,12 @@ export default function GerenciarViagensPage() {
                       <div className="font-medium text-gray-900">{formatarHora(viagem.horario_saida)}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500">Destino</div>
-                      <div className="font-medium text-gray-900 truncate">{viagem.hospital_destino || 'Não definido'}</div>
+                      <div className="text-xs text-gray-500">
+                        {viagem.ubs_destino_nome ? 'UBS Destino' : 'Hospital Destino'}
+                      </div>
+                      <div className="font-medium text-gray-900 truncate">
+                        {viagem.ubs_destino_nome || viagem.hospital_destino || 'Não definido'}
+                      </div>
                     </div>
                   </div>
 

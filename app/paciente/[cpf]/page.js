@@ -131,6 +131,16 @@ export default function InfoPacientePage() {
                 </p>
               </div>
 
+            {/* Sexo */}
+            <div className="pb-4 border-b border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">
+                Sexo
+              </h3>
+              <p className="text-gray-900 text-lg font-medium">
+                {paciente.sexo || 'Não informado'}
+              </p>
+            </div>
+
               {/* Documentos */}
               <div className="pb-4 border-b border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
@@ -253,6 +263,64 @@ export default function InfoPacientePage() {
                   </div>
                 </div>
               </div>
+
+              {/* UBS e Agente Comunitário */}
+                {(paciente.ubs_nome || paciente.agente_nome) && (
+                  <div className="pb-4 border-b border-gray-200">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+                      Unidade Básica de Saúde
+                    </h3>
+                    <div className="space-y-3">
+                      {paciente.ubs_nome && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm text-gray-600 font-medium">UBS de Cadastro:</span>
+                          </div>
+                          <p className="text-gray-900 ml-7">{paciente.ubs_nome}</p>
+                          {paciente.ubs_endereco && (
+                            <p className="text-sm text-gray-600 ml-7 mt-1">{paciente.ubs_endereco}</p>
+                          )}
+                        </div>
+                      )}
+                      
+                      {paciente.agente_nome && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm text-gray-600 font-medium">Agente Comunitário:</span>
+                          </div>
+                          <p className="text-gray-900 ml-7">{paciente.agente_nome}</p>
+                          {paciente.agente_telefone && (
+                            <p className="text-sm text-gray-600 ml-7 mt-1">Tel: {paciente.agente_telefone}</p>
+                          )}
+                          {paciente.agente_microarea && (
+                            <p className="text-xs text-gray-500 ml-7 mt-1">Microárea: {paciente.agente_microarea}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {paciente.microarea && !paciente.agente_microarea && (
+                        <div>
+                          <span className="text-sm text-gray-600">Microárea:</span>
+                          <span className="ml-2 text-gray-900">{paciente.microarea}</span>
+                        </div>
+                      )}
+
+                      {paciente.responsavel_familiar && (
+                        <div className="mt-2">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Responsável Familiar
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               {/* Informações Médicas */}
               {(paciente.alergias || paciente.observacoes_medicas) && (

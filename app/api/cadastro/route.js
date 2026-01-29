@@ -32,6 +32,14 @@ export async function POST(request) {
       );
     }
 
+    // Validar campo SEXO (obrigatório)
+    if (!dados.sexo || !['Masculino', 'Feminino', 'Outro'].includes(dados.sexo)) {
+      return NextResponse.json(
+        { erro: 'Sexo é obrigatório e deve ser Masculino, Feminino ou Outro' },
+        { status: 400 }
+      );
+    }
+
     // Verificar se é um tipo permitido para cadastro público
     if (!['administrador', 'paciente'].includes(dados.tipo_usuario)) {
       return NextResponse.json(
@@ -79,9 +87,9 @@ export async function POST(request) {
       // Inserir usuário base
       const resultUsuario = await client.query(
         `INSERT INTO usuarios 
-         (cpf, nome_completo, email, telefone, senha_hash, endereco, cep, tipo_usuario) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id`,
+        (cpf, nome_completo, email, telefone, senha_hash, endereco, cep, tipo_usuario, sexo) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+        RETURNING id`,
         [
           dados.cpf,
           dados.nome_completo,
@@ -90,10 +98,10 @@ export async function POST(request) {
           senhaHash,
           dados.endereco,
           dados.cep,
-          dados.tipo_usuario
+          dados.tipo_usuario,
+          dados.sexo
         ]
       );
-
       const usuarioId = resultUsuario.rows[0].id;
 
       // Inserir dados específicos baseado no tipo
@@ -115,19 +123,23 @@ export async function POST(request) {
 
         await client.query(
           `INSERT INTO pacientes 
-           (usuario_id, cartao_sus, nome_pai, nome_mae, data_nascimento) 
-           VALUES ($1, $2, $3, $4, $5)`,
+          (usuario_id, cartao_sus, nome_pai, nome_mae, data_nascimento, ubs_cadastro_id, agente_id, microarea, responsavel_familiar) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
           [
             usuarioId,
             dados.paciente.cartao_sus,
             dados.paciente.nome_pai || null,
             dados.paciente.nome_mae,
-            dados.paciente.data_nascimento
+            dados.paciente.data_nascimento,
+            dados.paciente.ubs_cadastro_id || null,
+            dados.paciente.agente_id || null,
+            dados.paciente.microarea || null,
+            dados.paciente.responsavel_familiar || false
           ]
         );
-      }
-
-      if (dados.tipo_usuario === 'administrador') {
+      } // <--- FECHAMENTO DE CHAVES ADICIONADO AQUI
+      
+      else if (dados.tipo_usuario === 'administrador') {
         // Validar campos obrigatórios do administrador
         if (!dados.administrador || !dados.administrador.cargo) {
           throw new Error('Dados obrigatórios do administrador não fornecidos');

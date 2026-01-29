@@ -15,6 +15,9 @@ export default function CriarViagemPage() {
   // Estados para o formulário
   const [hospitalDestino, setHospitalDestino] = useState('');
   const [enderecoDestino, setEnderecoDestino] = useState('');
+  const [ubsDestinoId, setUbsDestinoId] = useState('');
+  const [tipoDestino, setTipoDestino] = useState('hospital'); // 'hospital' ou 'ubs'
+
   const [dataViagem, setDataViagem] = useState('');
   const [horarioSaida, setHorarioSaida] = useState('');
   const [numeroVagas, setNumeroVagas] = useState('');
@@ -24,7 +27,8 @@ export default function CriarViagemPage() {
   
   const [motoristas, setMotoristas] = useState([]);
   const [onibus, setOnibus] = useState([]);
-  
+  const [ubsList, setUbsList] = useState([]);
+
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [criando, setCriando] = useState(false);
@@ -48,6 +52,13 @@ export default function CriarViagemPage() {
 
   const carregarDados = async () => {
     try {
+      // Carregar UBS
+      const resUbs = await fetch('/api/listar-ubs');
+      if (resUbs.ok) {
+        const dataUbs = await resUbs.json();
+        setUbsList(dataUbs.ubs || []);
+      }
+
       // Carregar motoristas
       const resMotoristas = await fetch('/api/listar-motoristas');
       if (resMotoristas.ok) {
@@ -95,8 +106,19 @@ export default function CriarViagemPage() {
   };
 
   const validarFormulario = () => {
-    if (!hospitalDestino || !dataViagem || !horarioSaida) {
+    if (!dataViagem || !horarioSaida) {
       setErro('Preencha todos os campos obrigatórios');
+      return false;
+    }
+
+    // Validar se informou hospital OU UBS
+    if (tipoDestino === 'hospital' && !hospitalDestino) {
+      setErro('Informe o hospital de destino');
+      return false;
+    }
+
+    if (tipoDestino === 'ubs' && !ubsDestinoId) {
+      setErro('Selecione a UBS de destino');
       return false;
     }
 
@@ -131,8 +153,9 @@ export default function CriarViagemPage() {
       const horarioSaidaConvertido = horarioSaida.replace('h', ':');
 
       const dadosViagem = {
-        hospital_destino: hospitalDestino,
-        endereco_destino: enderecoDestino || hospitalDestino,
+        hospital_destino: tipoDestino === 'hospital' ? hospitalDestino : null,
+        endereco_destino: tipoDestino === 'hospital' ? (enderecoDestino || hospitalDestino) : null,
+        ubs_destino_id: tipoDestino === 'ubs' ? parseInt(ubsDestinoId) : null,
         data_viagem: dataViagem,
         horario_saida: horarioSaidaConvertido,
         numero_vagas: parseInt(numeroVagas),
@@ -180,33 +203,88 @@ export default function CriarViagemPage() {
             </h3>
 
             <div className="space-y-4">
-              {/* Hospital */}
+              {/* Tipo de Destino */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hospital de Destino *
+                  Tipo de Destino *
                 </label>
-                <input
-                  type="text"
-                  value={hospitalDestino}
-                  onChange={(e) => setHospitalDestino(e.target.value)}
-                  placeholder="Ex: Hospital Regional de Campina Grande"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTipoDestino('hospital')}
+                    className={`py-3 px-4 rounded-lg border text-center transition-all ${
+                      tipoDestino === 'hospital'
+                        ? 'border-primary bg-primary text-white shadow-sm'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    Hospital
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoDestino('ubs')}
+                    className={`py-3 px-4 rounded-lg border text-center transition-all ${
+                      tipoDestino === 'ubs'
+                        ? 'border-primary bg-primary text-white shadow-sm'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    UBS
+                  </button>
+                </div>
               </div>
 
-              {/* Endereço */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Endereço do Hospital
-                </label>
-                <input
-                  type="text"
-                  value={enderecoDestino}
-                  onChange={(e) => setEnderecoDestino(e.target.value)}
-                  placeholder="Ex: Av. Brasília, 1000, Campina Grande-PB"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                />
-              </div>
+              {/* Hospital (se tipo = hospital) */}
+              {tipoDestino === 'hospital' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Hospital de Destino *
+                    </label>
+                    <input
+                      type="text"
+                      value={hospitalDestino}
+                      onChange={(e) => setHospitalDestino(e.target.value)}
+                      placeholder="Ex: Hospital Regional de Campina Grande"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Endereço do Hospital
+                    </label>
+                    <input
+                      type="text"
+                      value={enderecoDestino}
+                      onChange={(e) => setEnderecoDestino(e.target.value)}
+                      placeholder="Ex: Av. Brasília, 1000, Campina Grande-PB"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* UBS (se tipo = ubs) */}
+              {tipoDestino === 'ubs' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    UBS de Destino *
+                  </label>
+                  <select
+                    value={ubsDestinoId}
+                    onChange={(e) => setUbsDestinoId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  >
+                    <option value="">Selecione a UBS</option>
+                    {ubsList.map((ubs) => (
+                      <option key={ubs.id} value={ubs.id}>
+                        {ubs.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Data e Horário */}
               <div className="grid md:grid-cols-2 gap-4">

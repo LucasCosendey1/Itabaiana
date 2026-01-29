@@ -15,6 +15,7 @@ function gerarCodigoViagem() {
   return `V${timestamp}`;
 }
 
+// ATENÇÃO: O nome da função DEVE ser POST e NÃO pode ter "default"
 export async function POST(request) {
   let client;
   
@@ -22,9 +23,9 @@ export async function POST(request) {
     const dados = await request.json();
     
     // Validações básicas
-    if (!dados.hospital_destino || !dados.data_viagem || !dados.horario_saida) {
+    if (!dados.hospital_destino && !dados.ubs_destino_id) {
       return NextResponse.json(
-        { erro: 'Dados obrigatórios não fornecidos' },
+        { erro: 'Informe o hospital de destino ou a UBS de destino' },
         { status: 400 }
       );
     }
@@ -38,21 +39,44 @@ export async function POST(request) {
 
     client = await conectarBanco();
 
+    // --- LÓGICA PARA EVITAR ERRO DE NOT-NULL ---
+    let nomeDestinoFinal = dados.hospital_destino;
+    let enderecoDestinoFinal = dados.endereco_destino;
+
+    // Se não veio nome do hospital, mas veio UBS, buscamos o nome da UBS
+    if (!nomeDestinoFinal && dados.ubs_destino_id) {
+      const ubsResult = await client.query(
+        'SELECT nome, endereco FROM ubs WHERE id = $1', 
+        [dados.ubs_destino_id]
+      );
+
+      if (ubsResult.rows.length > 0) {
+        nomeDestinoFinal = ubsResult.rows[0].nome;
+        if (!enderecoDestinoFinal) {
+            enderecoDestinoFinal = ubsResult.rows[0].endereco || ubsResult.rows[0].nome;
+        }
+      } else {
+        nomeDestinoFinal = "UBS Destino (ID: " + dados.ubs_destino_id + ")";
+      }
+    }
+    // -------------------------------------------
+
     // Gerar código único para a viagem
     const codigoViagem = gerarCodigoViagem();
 
-    // Inserir viagem COM ônibus
+    // Inserir viagem
     const resultado = await client.query(
       `INSERT INTO viagens 
-       (codigo_viagem, motorista_id, onibus_id, hospital_destino, endereco_destino, data_viagem, horario_saida, numero_vagas, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente') 
-       RETURNING id, codigo_viagem`,
+      (codigo_viagem, motorista_id, onibus_id, hospital_destino, endereco_destino, ubs_destino_id, data_viagem, horario_saida, numero_vagas, status) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pendente') 
+      RETURNING id, codigo_viagem`,
       [
         codigoViagem,
         dados.motorista_id || null,
         dados.onibus_id || null,
-        dados.hospital_destino,
-        dados.endereco_destino || dados.hospital_destino,
+        nomeDestinoFinal, // Garante que não é NULL
+        enderecoDestinoFinal || nomeDestinoFinal, 
+        dados.ubs_destino_id || null,
         dados.data_viagem,
         dados.horario_saida,
         dados.numero_vagas

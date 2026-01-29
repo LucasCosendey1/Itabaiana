@@ -20,22 +20,29 @@ export async function GET(request) {
       `SELECT 
         v.id as viagem_id,
         v.codigo_viagem,
-        TO_CHAR(v.data_viagem, 'YYYY-MM-DD') as data_viagem,  -- ✅ Formata no banco
+        TO_CHAR(v.data_viagem, 'YYYY-MM-DD') as data_viagem,
         v.horario_saida,
-        v.horario_consulta,
         v.status,
         v.hospital_destino,
         v.numero_vagas,
         v.confirmado_em,
         -- Motorista
         mot_usr.nome_completo as motorista_nome,
-        mot.veiculo_modelo,
-        mot.veiculo_placa,
+        mot.cnh as motorista_cnh,
+        -- Ônibus (Join adicionado)
+        o.placa as onibus_placa,
+        o.modelo as onibus_modelo,
+        o.cor as onibus_cor,
+        -- UBS Destino
+        ubs.id as ubs_destino_id,
+        ubs.nome as ubs_destino_nome,
         -- Contagem de pacientes
         (SELECT COUNT(*) FROM viagem_pacientes vp WHERE vp.viagem_id = v.id) as total_pacientes
       FROM viagens v
       LEFT JOIN motoristas mot ON v.motorista_id = mot.id
       LEFT JOIN usuarios mot_usr ON mot.usuario_id = mot_usr.id
+      LEFT JOIN onibus o ON v.onibus_id = o.id
+      LEFT JOIN ubs ON v.ubs_destino_id = ubs.id
       ORDER BY v.data_viagem DESC, v.horario_saida DESC`
     );
 

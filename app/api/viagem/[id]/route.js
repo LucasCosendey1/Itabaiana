@@ -4,6 +4,7 @@ import { Client } from 'pg';
 
 /**
  * API ROUTE PARA BUSCAR DETALHES DE UMA VIAGEM
+ * Retorna dados da viagem + lista de passageiros
  */
 
 async function conectarBanco() {
@@ -18,7 +19,7 @@ export async function GET(request, { params }) {
   let client;
   
   try {
-    const { id } = params;
+    const { id } = params; // Esse ID é o ID numérico da tabela (ex: 15)
     
     if (!id) {
       return NextResponse.json(
@@ -29,72 +30,79 @@ export async function GET(request, { params }) {
 
     client = await conectarBanco();
 
-    // Buscar viagem com todas as informações
-    const resultado = await client.query(
-      `SELECT 
+    // 1. BUSCAR DADOS DA VIAGEM (Principal)
+    const queryViagem = `
+      SELECT 
         v.id as viagem_id,
         v.codigo_viagem,
-        v.data_viagem,
+        TO_CHAR(v.data_viagem, 'YYYY-MM-DD') as data_viagem,
         v.horario_saida,
-        v.horario_consulta,
-        v.horario_retorno_previsto,
         v.status,
-        v.motivo,
+        v.numero_vagas,
         v.hospital_destino,
         v.endereco_destino,
         v.confirmado_em,
         v.observacoes,
-        -- Paciente
-        p_usr.id as paciente_usuario_id,
-        p_usr.cpf as paciente_cpf,
-        p_usr.nome_completo as paciente_nome,
-        p_usr.email as paciente_email,
-        p_usr.telefone as paciente_telefone,
-        p_usr.endereco as paciente_endereco,
-        p_usr.cep as paciente_cep,
-        pac.cartao_sus,
-        pac.nome_pai,
-        pac.nome_mae,
-        pac.data_nascimento,
-        pac.tipo_sanguineo,
-        pac.alergias,
-        -- Médico
-        m_usr.nome_completo as medico_nome,
-        m_usr.telefone as medico_telefone,
-        med.crm as medico_crm,
-        med.especializacao as medico_especializacao,
-        med.hospital_vinculado as medico_hospital,
+        -- UBS Destino
+        ubs.id as ubs_destino_id,
+        ubs.nome as ubs_destino_nome,
+        ubs.endereco as ubs_destino_endereco,
+        ubs.telefone as ubs_destino_telefone,
         -- Motorista
         mot_usr.nome_completo as motorista_nome,
         mot_usr.telefone as motorista_telefone,
         mot.cnh as motorista_cnh,
-        mot.categoria_cnh as motorista_categoria,
-        mot.veiculo_placa,
-        mot.veiculo_modelo,
-        mot.capacidade_passageiros
+        -- Ônibus
+        o.placa as onibus_placa,
+        o.modelo as onibus_modelo,
+        o.ano as onibus_ano,
+        o.cor as onibus_cor,
+        o.capacidade_passageiros as onibus_capacidade
       FROM viagens v
-      INNER JOIN pacientes pac ON v.paciente_id = pac.id
-      INNER JOIN usuarios p_usr ON pac.usuario_id = p_usr.id
-      LEFT JOIN medicos med ON v.medico_id = med.id
-      LEFT JOIN usuarios m_usr ON med.usuario_id = m_usr.id
       LEFT JOIN motoristas mot ON v.motorista_id = mot.id
       LEFT JOIN usuarios mot_usr ON mot.usuario_id = mot_usr.id
-      WHERE v.codigo_viagem = $1`,
-      [id]
-    );
+      LEFT JOIN onibus o ON v.onibus_id = o.id
+      LEFT JOIN ubs ON v.ubs_destino_id = ubs.id
+      WHERE v.id = $1
+    `;
 
-    if (resultado.rows.length === 0) {
+    const resultadoViagem = await client.query(queryViagem, [id]);
+
+    if (resultadoViagem.rows.length === 0) {
       return NextResponse.json(
         { erro: 'Viagem não encontrada' },
         { status: 404 }
       );
     }
 
-    const viagem = resultado.rows[0];
+    const viagem = resultadoViagem.rows[0];
 
-    // Buscar histórico de mudanças de status
-    const historico = await client.query(
-      `SELECT 
+    // 2. BUSCAR PACIENTES DESTA VIAGEM
+    const queryPacientes = `
+      SELECT 
+        p.id as paciente_id,
+        p.cartao_sus,
+        u.nome_completo,
+        u.cpf,
+        u.sexo,
+        vp.motivo,
+        vp.observacoes,
+        vp.horario_consulta,
+        -- UBS do Paciente
+        ubs.nome as paciente_ubs_nome
+      FROM viagem_pacientes vp
+      INNER JOIN pacientes p ON vp.paciente_id = p.id
+      INNER JOIN usuarios u ON p.usuario_id = u.id
+      LEFT JOIN ubs ON p.ubs_cadastro_id = ubs.id
+      WHERE vp.viagem_id = $1
+      ORDER BY u.nome_completo ASC
+    `;
+
+    const resultadoPacientes = await client.query(queryPacientes, [id]);
+
+    // 3. BUSCAR HISTÓRICO
+    const queryHistorico = `
+      SELECT 
         h.status_anterior,
         h.status_novo,
         h.observacao,
@@ -103,26 +111,26 @@ export async function GET(request, { params }) {
       FROM historico_viagens h
       LEFT JOIN usuarios u ON h.alterado_por = u.id
       WHERE h.viagem_id = $1
-      ORDER BY h.data_alteracao DESC`,
-      [viagem.viagem_id]
-    );
+      ORDER BY h.data_alteracao DESC
+    `;
+
+    const resultadoHistorico = await client.query(queryHistorico, [id]);
 
     return NextResponse.json(
       { 
         viagem: viagem,
-        historico: historico.rows
+        pacientes: resultadoPacientes.rows,
+        historico: resultadoHistorico.rows
       },
       { status: 200 }
     );
 
   } catch (erro) {
     console.error('Erro ao buscar viagem:', erro);
-    
     return NextResponse.json(
       { erro: 'Erro ao buscar viagem' },
       { status: 500 }
     );
-    
   } finally {
     if (client) {
       await client.end();
@@ -130,13 +138,12 @@ export async function GET(request, { params }) {
   }
 }
 
-// PUT - Confirmar presença
+// PUT - Confirmar Viagem (Geral)
 export async function PUT(request, { params }) {
   let client;
   
   try {
     const { id } = params;
-    const body = await request.json();
     
     if (!id) {
       return NextResponse.json(
@@ -147,9 +154,9 @@ export async function PUT(request, { params }) {
 
     client = await conectarBanco();
 
-    // Buscar viagem
+    // Verificar status atual usando o ID
     const viagemExiste = await client.query(
-      'SELECT id, status FROM viagens WHERE codigo_viagem = $1',
+      'SELECT id, status FROM viagens WHERE id = $1',
       [id]
     );
 
@@ -162,34 +169,31 @@ export async function PUT(request, { params }) {
 
     const viagem = viagemExiste.rows[0];
 
-    if (viagem.status !== 'pendente') {
-      return NextResponse.json(
-        { erro: 'Viagem já foi confirmada ou não está mais pendente' },
-        { status: 400 }
-      );
-    }
+    // Lógica opcional: Impedir re-confirmação se desejar
+    // if (viagem.status !== 'pendente') ...
 
-    // Confirmar presença
+    // Confirmar viagem
     await client.query(
       `UPDATE viagens 
        SET status = 'confirmado', confirmado_em = CURRENT_TIMESTAMP
-       WHERE codigo_viagem = $1`,
+       WHERE id = $1`,
       [id]
     );
 
+    // Opcional: Registrar no histórico
+    // await client.query('INSERT INTO historico_viagens ...')
+
     return NextResponse.json(
-      { mensagem: 'Presença confirmada com sucesso' },
+      { mensagem: 'Viagem confirmada com sucesso' },
       { status: 200 }
     );
 
   } catch (erro) {
-    console.error('Erro ao confirmar presença:', erro);
-    
+    console.error('Erro ao confirmar viagem:', erro);
     return NextResponse.json(
-      { erro: 'Erro ao confirmar presença' },
+      { erro: 'Erro ao confirmar viagem' },
       { status: 500 }
     );
-    
   } finally {
     if (client) {
       await client.end();

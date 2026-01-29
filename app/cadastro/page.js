@@ -1,7 +1,7 @@
 // app/cadastro/page.js
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import InputCPF from '../components/InputCPF';
 import { formatarCPF } from '../utils/helpers';
@@ -23,6 +23,7 @@ export default function CadastroPage() {
   const [telefone, setTelefone] = useState('');
   const [endereco, setEndereco] = useState('');
   const [cep, setCep] = useState('');
+  const [sexo, setSexo] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   
@@ -31,6 +32,12 @@ export default function CadastroPage() {
   const [nomePai, setNomePai] = useState('');
   const [nomeMae, setNomeMae] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
+  const [ubsList, setUbsList] = useState([]);
+  const [acsList, setAcsList] = useState([]);
+  const [ubsCadastroId, setUbsCadastroId] = useState('');
+  const [agenteId, setAgenteId] = useState('');
+  const [microarea, setMicroarea] = useState('');
+  const [responsavelFamiliar, setResponsavelFamiliar] = useState(false);
   
   // Estados para campos específicos - ADMINISTRADOR
   const [cargo, setCargo] = useState('');
@@ -39,6 +46,31 @@ export default function CadastroPage() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(false);
+
+  // Carregar UBS e ACS
+  useEffect(() => {
+    carregarUbsEAcs();
+  }, []);
+
+  const carregarUbsEAcs = async () => {
+    try {
+      // Carregar UBS
+      const resUbs = await fetch('/api/listar-ubs');
+      if (resUbs.ok) {
+        const dataUbs = await resUbs.json();
+        setUbsList(dataUbs.ubs || []);
+      }
+
+      // Carregar ACS
+      const resAcs = await fetch('/api/listar-acs');
+      if (resAcs.ok) {
+        const dataAcs = await resAcs.json();
+        setAcsList(dataAcs.agentes || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar UBS e ACS:', error);
+    }
+  };
 
   // Tipos de usuário disponíveis
   const tiposUsuario = [
@@ -81,6 +113,12 @@ export default function CadastroPage() {
       return false;
     }
 
+    // Validar SEXO (obrigatório)
+    if (!sexo) {
+      setErro('Selecione o sexo');
+      return false;
+    }
+
     // Validar email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -111,6 +149,12 @@ export default function CadastroPage() {
         setErro('Preencha todos os campos obrigatórios do paciente');
         return false;
       }
+      
+      if (!ubsCadastroId) {
+        setErro('Selecione a UBS de cadastro do paciente');
+        return false;
+      }
+      
       if (cartaoSus.replace(/\D/g, '').length !== 15) {
         setErro('Cartão SUS inválido (deve ter 15 dígitos)');
         return false;
@@ -149,6 +193,7 @@ export default function CadastroPage() {
         telefone: telefone,
         endereco: endereco,
         cep: cep,
+        sexo: sexo,
         senha: senha,
       };
 
@@ -158,7 +203,11 @@ export default function CadastroPage() {
           cartao_sus: cartaoSus,
           nome_pai: nomePai || null,
           nome_mae: nomeMae,
-          data_nascimento: dataNascimento
+          data_nascimento: dataNascimento,
+          ubs_cadastro_id: ubsCadastroId ? parseInt(ubsCadastroId) : null,
+          agente_id: agenteId ? parseInt(agenteId) : null,
+          microarea: microarea || null,
+          responsavel_familiar: responsavelFamiliar
         };
       }
 
@@ -368,6 +417,23 @@ export default function CadastroPage() {
                 />
               </div>
 
+              {/* Sexo */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  Sexo *
+                </label>
+                <select
+                  value={sexo}
+                  onChange={(e) => setSexo(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                >
+                  <option value="">Selecione o sexo</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Feminino">Feminino</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
+
               {/* Senha */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
@@ -459,6 +525,72 @@ export default function CadastroPage() {
                     max={new Date().toISOString().split('T')[0]}
                     className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                   />
+                </div>
+
+                {/* UBS de Cadastro */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    UBS de Cadastro *
+                  </label>
+                  <select
+                    value={ubsCadastroId}
+                    onChange={(e) => setUbsCadastroId(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  >
+                    <option value="">Selecione a UBS</option>
+                    {ubsList.map((ubs) => (
+                      <option key={ubs.id} value={ubs.id}>
+                        {ubs.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Agente Comunitário */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    Agente Comunitário de Saúde (ACS)
+                  </label>
+                  <select
+                    value={agenteId}
+                    onChange={(e) => setAgenteId(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  >
+                    <option value="">Selecione o ACS (opcional)</option>
+                    {acsList.map((acs) => (
+                      <option key={acs.id} value={acs.id}>
+                        {acs.nome_completo} {acs.ubs_nome ? `- ${acs.ubs_nome}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Microárea */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    Microárea
+                  </label>
+                  <input
+                    type="text"
+                    value={microarea}
+                    onChange={(e) => setMicroarea(e.target.value)}
+                    placeholder="Ex: Área 01"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  />
+                </div>
+
+                {/* Responsável Familiar */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="responsavelFamiliar"
+                    checked={responsavelFamiliar}
+                    onChange={(e) => setResponsavelFamiliar(e.target.checked)}
+                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-2 focus:ring-primary"
+                  />
+                  <label htmlFor="responsavelFamiliar" className="text-xs font-medium text-gray-600">
+                    É responsável familiar
+                  </label>
                 </div>
               </div>
             )}

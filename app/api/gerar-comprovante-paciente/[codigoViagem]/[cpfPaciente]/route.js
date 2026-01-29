@@ -1,4 +1,4 @@
-// app/api/gerar-comprovante/[id]/route.js
+// app/api/gerar-comprovante-paciente/[codigoViagem]/[cpfPaciente]/route.js
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 import PDFDocument from 'pdfkit';
@@ -13,10 +13,7 @@ async function conectarBanco() {
 
 function formatarData(data) {
   if (!data) return '';
-  const dateObj = typeof data === 'string' ? new Date(data) : data;
-  const dia = String(dateObj.getDate()).padStart(2, '0');
-  const mes = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const ano = dateObj.getFullYear();
+  const [ano, mes, dia] = data.split('-');
   return `${dia}/${mes}/${ano}`;
 }
 
@@ -29,36 +26,40 @@ export async function GET(request, { params }) {
   let client;
   
   try {
-    const { id } = params;
+    const { codigoViagem, cpfPaciente } = params;
     
-    if (!id) {
+    if (!codigoViagem || !cpfPaciente) {
       return NextResponse.json(
-        { erro: 'ID da viagem é obrigatório' },
+        { erro: 'Código da viagem e CPF do paciente são obrigatórios' },
         { status: 400 }
       );
     }
 
     client = await conectarBanco();
 
-    // SUBSTITUIÇÃO REALIZADA AQUI
+    // Limpar CPF (remover formatação)
+    const cpfLimpo = cpfPaciente.replace(/\D/g, '');
+
+    // Buscar dados completos do paciente nesta viagem
     const resultado = await client.query(
       `SELECT 
         v.id as viagem_id,
         v.codigo_viagem,
         TO_CHAR(v.data_viagem, 'YYYY-MM-DD') as data_viagem,
         v.horario_saida,
-        v.horario_consulta,
         v.status,
-        v.motivo,
         v.hospital_destino,
         v.endereco_destino,
-        v.confirmado_em,
         -- Paciente
-        p_usr.cpf as paciente_cpf,
-        p_usr.nome_completo as paciente_nome,
-        p_usr.telefone as paciente_telefone,
-        p_usr.sexo as paciente_sexo,
-        pac.cartao_sus,
+        u.cpf as paciente_cpf,
+        u.nome_completo as paciente_nome,
+        u.telefone as paciente_telefone,
+        u.sexo as paciente_sexo,
+        p.cartao_sus,
+        -- Dados da viagem-paciente
+        vp.motivo,
+        vp.horario_consulta,
+        vp.observacoes,
         -- Médico
         m_usr.nome_completo as medico_nome,
         med.crm as medico_crm,
@@ -69,29 +70,35 @@ export async function GET(request, { params }) {
         o.placa as onibus_placa,
         o.modelo as onibus_modelo,
         o.ano as onibus_ano,
-        o.cor as onibus_cor
+        o.cor as onibus_cor,
+        -- UBS Destino
+        ubs.nome as ubs_destino_nome,
+        ubs.endereco as ubs_destino_endereco
       FROM viagens v
-      INNER JOIN pacientes pac ON v.paciente_id = pac.id
-      INNER JOIN usuarios p_usr ON pac.usuario_id = p_usr.id
-      LEFT JOIN medicos med ON v.medico_id = med.id
+      INNER JOIN viagem_pacientes vp ON v.id = vp.viagem_id
+      INNER JOIN pacientes p ON vp.paciente_id = p.id
+      INNER JOIN usuarios u ON p.usuario_id = u.id
+      LEFT JOIN medicos med ON vp.medico_id = med.id
       LEFT JOIN usuarios m_usr ON med.usuario_id = m_usr.id
       LEFT JOIN motoristas mot ON v.motorista_id = mot.id
       LEFT JOIN usuarios mot_usr ON mot.usuario_id = mot_usr.id
       LEFT JOIN onibus o ON v.onibus_id = o.id
-      WHERE v.codigo_viagem = $1`,
-      [id]
+      LEFT JOIN ubs ON v.ubs_destino_id = ubs.id
+      WHERE v.codigo_viagem = $1 
+        AND REPLACE(REPLACE(REPLACE(u.cpf, '.', ''), '-', ''), ' ', '') = $2`,
+      [codigoViagem, cpfLimpo]
     );
 
     if (resultado.rows.length === 0) {
       return NextResponse.json(
-        { erro: 'Viagem não encontrada' },
+        { erro: 'Paciente não encontrado nesta viagem' },
         { status: 404 }
       );
     }
 
-    const viagem = resultado.rows[0];
+    const dados = resultado.rows[0];
 
-    // --- GERAÇÃO DO PDF ---
+    // Criar PDF
     const doc = new PDFDocument({ 
       size: 'A4',
       margins: { top: 50, bottom: 50, left: 50, right: 50 }
@@ -117,7 +124,7 @@ export async function GET(request, { params }) {
        .text('Transporte SUS - Itabaiana/PB', 50, 60, { align: 'center' });
 
     doc.fontSize(10)
-       .text(`Código: ${viagem.codigo_viagem}`, 50, 80, { align: 'center' });
+       .text(`Código: ${dados.codigo_viagem}`, 50, 80, { align: 'center' });
 
     let y = 130;
 
@@ -135,31 +142,31 @@ export async function GET(request, { params }) {
        .font('Helvetica-Bold')
        .text('Nome:', 60, y);
     doc.font('Helvetica')
-       .text(viagem.paciente_nome, 150, y);
+       .text(dados.paciente_nome, 150, y);
 
     y += 20;
     doc.font('Helvetica-Bold')
        .text('CPF:', 60, y);
     doc.font('Helvetica')
-       .text(viagem.paciente_cpf, 150, y);
+       .text(dados.paciente_cpf, 150, y);
 
     y += 20;
     doc.font('Helvetica-Bold')
        .text('Sexo:', 60, y);
     doc.font('Helvetica')
-       .text(viagem.paciente_sexo || 'Não informado', 150, y);
+       .text(dados.paciente_sexo || 'Não informado', 150, y);
 
     y += 20;
     doc.font('Helvetica-Bold')
        .text('Cartão SUS:', 60, y);
     doc.font('Helvetica')
-       .text(viagem.cartao_sus, 150, y);
+       .text(dados.cartao_sus, 150, y);
 
     y += 20;
     doc.font('Helvetica-Bold')
        .text('Telefone:', 60, y);
     doc.font('Helvetica')
-       .text(viagem.paciente_telefone || 'Não informado', 150, y);
+       .text(dados.paciente_telefone || 'Não informado', 150, y);
 
     y += 40;
 
@@ -170,80 +177,97 @@ export async function GET(request, { params }) {
        .text('INFORMAÇÕES DA VIAGEM', 50, y);
 
     y += 25;
-    doc.rect(50, y - 5, doc.page.width - 100, 120).stroke('#e5e7eb');
+    doc.rect(50, y - 5, doc.page.width - 100, 140).stroke('#e5e7eb');
 
     doc.fillColor(cinzaEscuro)
        .fontSize(11)
        .font('Helvetica-Bold')
        .text('Data da Viagem:', 60, y);
     doc.font('Helvetica')
-       .text(formatarData(viagem.data_viagem), 200, y);
+       .text(formatarData(dados.data_viagem), 200, y);
 
     y += 20;
     doc.font('Helvetica-Bold')
        .text('Horário de Saída:', 60, y);
     doc.font('Helvetica')
-       .text(formatarHora(viagem.horario_saida), 200, y);
+       .text(formatarHora(dados.horario_saida), 200, y);
 
     y += 20;
+    if (dados.horario_consulta) {
+      doc.font('Helvetica-Bold')
+         .text('Horário da Consulta:', 60, y);
+      doc.font('Helvetica')
+         .text(formatarHora(dados.horario_consulta), 200, y);
+      y += 20;
+    }
+
     doc.font('Helvetica-Bold')
        .text('Motivo:', 60, y);
     doc.font('Helvetica')
-       .text(viagem.motivo || 'Não informado', 200, y, { width: 300 });
+       .text(dados.motivo || 'Não informado', 200, y, { width: 300 });
 
     y += 20;
     doc.font('Helvetica-Bold')
        .text('Destino:', 60, y);
     doc.font('Helvetica')
-       .text(viagem.hospital_destino, 200, y, { width: 300 });
+       .text(dados.ubs_destino_nome || dados.hospital_destino, 200, y, { width: 300 });
 
     y += 20;
     doc.font('Helvetica-Bold')
        .text('Endereço:', 60, y);
     doc.font('Helvetica')
-       .text(viagem.endereco_destino || viagem.hospital_destino, 200, y, { width: 300 });
+       .text(dados.ubs_destino_endereco || dados.endereco_destino || '-', 200, y, { width: 300 });
 
-    y += 40;
+    y += 20;
+    if (dados.medico_nome) {
+      doc.font('Helvetica-Bold')
+         .text('Médico:', 60, y);
+      doc.font('Helvetica')
+         .text(`${dados.medico_nome} (CRM: ${dados.medico_crm || '-'})`, 200, y, { width: 300 });
+      y += 20;
+    }
+
+    y += 20;
 
     // MOTORISTA E VEÍCULO
-    if (viagem.motorista_nome || viagem.onibus_placa) {
+    if (dados.motorista_nome || dados.onibus_placa) {
       doc.fillColor(azulPrimario)
          .fontSize(14)
          .font('Helvetica-Bold')
          .text('MOTORISTA E VEÍCULO', 50, y);
       
       y += 25;
-      const alturaBox = (viagem.motorista_nome ? 60 : 0) + (viagem.onibus_placa ? 60 : 0);
+      const alturaBox = (dados.motorista_nome ? 60 : 0) + (dados.onibus_placa ? 60 : 0);
       doc.rect(50, y - 5, doc.page.width - 100, alturaBox).stroke('#e5e7eb');
       
-      if (viagem.motorista_nome) {
+      if (dados.motorista_nome) {
         doc.fillColor(cinzaEscuro)
            .fontSize(11)
            .font('Helvetica-Bold')
            .text('Motorista:', 60, y);
         doc.font('Helvetica')
-           .text(viagem.motorista_nome, 200, y);
+           .text(dados.motorista_nome, 200, y);
         
         y += 20;
         doc.font('Helvetica-Bold')
            .text('Telefone:', 60, y);
         doc.font('Helvetica')
-           .text(viagem.motorista_telefone || 'Não informado', 200, y);
+           .text(dados.motorista_telefone || 'Não informado', 200, y);
         
         y += 20;
       }
       
-      if (viagem.onibus_placa) {
+      if (dados.onibus_placa) {
         doc.font('Helvetica-Bold')
            .text('Ônibus:', 60, y);
         doc.font('Helvetica')
-           .text(`Placa: ${viagem.onibus_placa}`, 200, y);
+           .text(`Placa: ${dados.onibus_placa}`, 200, y);
         
         y += 20;
         doc.font('Helvetica-Bold')
            .text('Modelo/Cor:', 60, y);
         doc.font('Helvetica')
-           .text(`${viagem.onibus_modelo || '-'} - ${viagem.onibus_cor || '-'} (${viagem.onibus_ano || '-'})`, 200, y);
+           .text(`${dados.onibus_modelo || '-'} - ${dados.onibus_cor || '-'} (${dados.onibus_ano || '-'})`, 200, y);
         
         y += 20;
       }
@@ -267,7 +291,6 @@ export async function GET(request, { params }) {
 
     doc.end();
 
-    // Aguardar finalização e converter para buffer
     await new Promise((resolve) => {
       doc.on('end', resolve);
     });
@@ -278,7 +301,7 @@ export async function GET(request, { params }) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="Comprovante-Viagem-${viagem.codigo_viagem}.pdf"`,
+        'Content-Disposition': `attachment; filename="Comprovante-${dados.paciente_nome.replace(/\s+/g, '-')}-${dados.codigo_viagem}.pdf"`,
       },
     });
 
@@ -286,7 +309,7 @@ export async function GET(request, { params }) {
     console.error('Erro ao gerar comprovante:', erro);
     
     return NextResponse.json(
-      { erro: 'Erro ao gerar comprovante' },
+      { erro: 'Erro ao gerar comprovante do paciente' },
       { status: 500 }
     );
     
