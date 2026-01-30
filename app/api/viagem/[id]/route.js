@@ -1,10 +1,10 @@
-// app/api/viagem/[id]/route.js
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 
 /**
  * API ROUTE PARA BUSCAR DETALHES DE UMA VIAGEM
  * Retorna dados da viagem + lista de passageiros
+ * Aceita ID numérico ou Código da Viagem (ex: V010)
  */
 
 async function conectarBanco() {
@@ -19,16 +19,33 @@ export async function GET(request, { params }) {
   let client;
   
   try {
-    const { id } = params; // Esse ID é o ID numérico da tabela (ex: 15)
+    const { id } = await params; 
     
-    if (!id) {
+    if (!id || id === 'undefined') {
       return NextResponse.json(
-        { erro: 'ID da viagem é obrigatório' },
+        { erro: 'Identificador da viagem é obrigatório' },
         { status: 400 }
       );
     }
 
     client = await conectarBanco();
+
+    // 🧠 LÓGICA DE DECISÃO INTELIGENTE (IGUAL À OUTRA API)
+    // Verifica se o ID é APENAS números (ex: "10") ou se tem letras (ex: "V010")
+    const ehApenasNumeros = /^\d+$/.test(id);
+    
+    let queryWhere = '';
+    let parametroBusca = '';
+
+    if (ehApenasNumeros) {
+      // Se for número puro, busca pelo ID da tabela
+      queryWhere = 'v.id = $1';
+      parametroBusca = parseInt(id, 10); 
+    } else {
+      // Se tiver letras, busca pelo CÓDIGO_VIAGEM
+      queryWhere = 'v.codigo_viagem = $1';
+      parametroBusca = id; 
+    }
 
     // 1. BUSCAR DADOS DA VIAGEM (Principal)
     const queryViagem = `
@@ -63,10 +80,10 @@ export async function GET(request, { params }) {
       LEFT JOIN usuarios mot_usr ON mot.usuario_id = mot_usr.id
       LEFT JOIN onibus o ON v.onibus_id = o.id
       LEFT JOIN ubs ON v.ubs_destino_id = ubs.id
-      WHERE v.id = $1
+      WHERE ${queryWhere}
     `;
 
-    const resultadoViagem = await client.query(queryViagem, [id]);
+    const resultadoViagem = await client.query(queryViagem, [parametroBusca]);
 
     if (resultadoViagem.rows.length === 0) {
       return NextResponse.json(
@@ -78,8 +95,10 @@ export async function GET(request, { params }) {
     const viagem = resultadoViagem.rows[0];
 
     // 2. BUSCAR PACIENTES DESTA VIAGEM
+    // Importante: Usamos o viagem.viagem_id (numérico) que recuperamos acima
     const queryPacientes = `
       SELECT 
+        vp.id as vinculo_id,
         p.id as paciente_id,
         p.cartao_sus,
         u.nome_completo,
@@ -88,6 +107,7 @@ export async function GET(request, { params }) {
         vp.motivo,
         vp.observacoes,
         vp.horario_consulta,
+        vp.compareceu,
         -- UBS do Paciente
         ubs.nome as paciente_ubs_nome
       FROM viagem_pacientes vp
@@ -98,7 +118,7 @@ export async function GET(request, { params }) {
       ORDER BY u.nome_completo ASC
     `;
 
-    const resultadoPacientes = await client.query(queryPacientes, [id]);
+    const resultadoPacientes = await client.query(queryPacientes, [viagem.viagem_id]);
 
     // 3. BUSCAR HISTÓRICO
     const queryHistorico = `
@@ -114,7 +134,7 @@ export async function GET(request, { params }) {
       ORDER BY h.data_alteracao DESC
     `;
 
-    const resultadoHistorico = await client.query(queryHistorico, [id]);
+    const resultadoHistorico = await client.query(queryHistorico, [viagem.viagem_id]);
 
     return NextResponse.json(
       { 
@@ -139,11 +159,12 @@ export async function GET(request, { params }) {
 }
 
 // PUT - Confirmar Viagem (Geral)
+// Também precisa ser ajustado para aceitar ID ou Código
 export async function PUT(request, { params }) {
   let client;
   
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
@@ -154,11 +175,22 @@ export async function PUT(request, { params }) {
 
     client = await conectarBanco();
 
-    // Verificar status atual usando o ID
-    const viagemExiste = await client.query(
-      'SELECT id, status FROM viagens WHERE id = $1',
-      [id]
-    );
+    // Lógica inteligente para o WHERE
+    const ehApenasNumeros = /^\d+$/.test(id);
+    let queryWhere = '';
+    let parametroBusca = '';
+
+    if (ehApenasNumeros) {
+      queryWhere = 'id = $1';
+      parametroBusca = parseInt(id, 10);
+    } else {
+      queryWhere = 'codigo_viagem = $1';
+      parametroBusca = id;
+    }
+
+    // Verificar status atual
+    const queryVerificacao = `SELECT id, status FROM viagens WHERE ${queryWhere}`;
+    const viagemExiste = await client.query(queryVerificacao, [parametroBusca]);
 
     if (viagemExiste.rows.length === 0) {
       return NextResponse.json(
@@ -167,21 +199,14 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const viagem = viagemExiste.rows[0];
-
-    // Lógica opcional: Impedir re-confirmação se desejar
-    // if (viagem.status !== 'pendente') ...
-
-    // Confirmar viagem
-    await client.query(
-      `UPDATE viagens 
-       SET status = 'confirmado', confirmado_em = CURRENT_TIMESTAMP
-       WHERE id = $1`,
-      [id]
-    );
-
-    // Opcional: Registrar no histórico
-    // await client.query('INSERT INTO historico_viagens ...')
+    // Confirmar viagem (usando o WHERE dinâmico)
+    const queryUpdate = `
+      UPDATE viagens 
+      SET status = 'confirmado', confirmado_em = CURRENT_TIMESTAMP
+      WHERE ${queryWhere}
+    `;
+    
+    await client.query(queryUpdate, [parametroBusca]);
 
     return NextResponse.json(
       { mensagem: 'Viagem confirmada com sucesso' },

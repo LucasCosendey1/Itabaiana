@@ -1,14 +1,13 @@
-// app/viagem/[id]/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '../../components/Header';
-import { verificarAutenticacao, formatarData, formatarHora, formatarStatus, getCorStatus } from '../../utils/helpers';
+import { verificarAutenticacao, formatarData, formatarHora, formatarStatus } from '../../utils/helpers';
 
 /**
  * PÁGINA DE DETALHES DA VIAGEM
- * Com funcionalidades de edição e remoção para administradores
+ * Com funcionalidades de edição e Check-in de pacientes
  */
 export default function DetalhesViagemPage() {
   const router = useRouter();
@@ -25,7 +24,7 @@ export default function DetalhesViagemPage() {
 
   // Estados de Edição
   const [modoEdicao, setModoEdicao] = useState(false);
-  const [editandoCampo, setEditandoCampo] = useState(null); // 'motorista', 'onibus', 'destino', 'datahora'
+  const [editandoCampo, setEditandoCampo] = useState(null);
 
   // Estados temporários para formulários de edição
   const [novoMotoristaId, setNovoMotoristaId] = useState('');
@@ -40,6 +39,11 @@ export default function DetalhesViagemPage() {
   const [motoristas, setMotoristas] = useState([]);
   const [onibus, setOnibus] = useState([]);
   const [ubsList, setUbsList] = useState([]);
+
+  // 3.1. Função de Navegação para o Check-in
+  const handleAbrirCheckin = (paciente) => {
+    router.push(`/viagem/${params.id}/paciente/${paciente.paciente_id}`);
+  };
 
   useEffect(() => {
     const autenticado = verificarAutenticacao(router);
@@ -102,7 +106,7 @@ export default function DetalhesViagemPage() {
   };
 
   // ============================================
-  // FUNÇÕES DE EDIÇÃO
+  // FUNÇÕES DE EDIÇÃO (Mantidas do original)
   // ============================================
 
   const cancelarEdicao = () => {
@@ -153,7 +157,6 @@ export default function DetalhesViagemPage() {
 
   const salvarOnibus = async () => {
     try {
-      // Buscar capacidade do ônibus selecionado para atualizar numero_vagas se necessário
       const onibusSelecionado = onibus.find(o => o.id === parseInt(novoOnibusId));
       const payload = { onibus_id: novoOnibusId || null };
       
@@ -189,7 +192,6 @@ export default function DetalhesViagemPage() {
 
   const salvarDestino = async () => {
     try {
-      // Se for UBS, pegamos o nome dela da lista
       let nomeFinal = novoDestinoNome;
       if (novoDestinoId !== 'outro') {
           const ubsSel = ubsList.find(u => u.id === parseInt(novoDestinoId));
@@ -221,7 +223,6 @@ export default function DetalhesViagemPage() {
 
   // --- DATA E HORA ---
   const iniciarEdicaoDataHora = () => {
-    // data_viagem vem como string YYYY-MM-DD ou Date object
     const dataFormatada = typeof viagem.data_viagem === 'string' 
       ? viagem.data_viagem.split('T')[0] 
       : new Date(viagem.data_viagem).toISOString().split('T')[0];
@@ -266,12 +267,12 @@ export default function DetalhesViagemPage() {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          viagem_id: viagem.viagem_id, // Importante: usar o ID numérico da tabela
+          viagem_id: viagem.viagem_id,
           paciente_id: pacienteId
         })
       });
       if (response.ok) {
-        carregarViagem(); // Recarrega para atualizar a lista e contadores
+        carregarViagem();
       } else {
         const data = await response.json();
         setErro(data.erro || 'Erro ao remover paciente');
@@ -309,11 +310,6 @@ export default function DetalhesViagemPage() {
 
   const handleAdicionarPaciente = () => {
     router.push(`/adicionar-paciente/${params.id}`);
-  };
-
-  const handleVerPaciente = (cpf) => {
-    const cpfLimpo = cpf.replace(/\D/g, '');
-    router.push(`/paciente/${cpfLimpo}`);
   };
 
   const handleBaixarPDF = () => {
@@ -357,7 +353,7 @@ export default function DetalhesViagemPage() {
   const viagemLotada = vagasDisponiveis <= 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       <Header titulo="Detalhes da Viagem" mostrarVoltar voltarPara="/gerenciar-viagens" />
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
@@ -399,25 +395,15 @@ export default function DetalhesViagemPage() {
 
             {editandoCampo === 'datahora' ? (
               <div className="bg-white/10 p-4 rounded-lg mt-2 space-y-3 border border-white/20">
+                {/* ... Formulário de edição de data/hora (mantido) ... */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-blue-100 mb-1">Nova Data</label>
-                    <input
-                      type="date"
-                      value={novaDataViagem}
-                      onChange={(e) => setNovaDataViagem(e.target.value)}
-                      className="w-full px-3 py-2 text-sm rounded text-gray-900 outline-none"
-                    />
+                    <input type="date" value={novaDataViagem} onChange={(e) => setNovaDataViagem(e.target.value)} className="w-full px-3 py-2 text-sm rounded text-gray-900 outline-none" />
                   </div>
                   <div>
                     <label className="block text-xs text-blue-100 mb-1">Novo Horário</label>
-                    <input
-                      type="text"
-                      value={novoHorarioSaida}
-                      onChange={(e) => setNovoHorarioSaida(formatarHorarioInput(e.target.value))}
-                      placeholder="00h00"
-                      className="w-full px-3 py-2 text-sm rounded text-gray-900 outline-none"
-                    />
+                    <input type="text" value={novoHorarioSaida} onChange={(e) => setNovoHorarioSaida(formatarHorarioInput(e.target.value))} placeholder="00h00" className="w-full px-3 py-2 text-sm rounded text-gray-900 outline-none" />
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2">
@@ -440,9 +426,8 @@ export default function DetalhesViagemPage() {
             )}
           </div>
 
-          {/* Informações Detalhadas */}
+          {/* Informações Detalhadas (Destino e Ocupação) */}
           <div className="p-6 space-y-6">
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
               {/* Card DESTINO */}
@@ -451,45 +436,22 @@ export default function DetalhesViagemPage() {
                   <h3 className="text-xs font-bold text-gray-500 uppercase">Destino</h3>
                   {ehAdministrador && !modoEdicao && (
                     <button onClick={iniciarEdicaoDestino} className="text-blue-600 hover:text-blue-800" title="Editar Destino">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
                   )}
                 </div>
 
                 {editandoCampo === 'destino' ? (
                   <div className="space-y-3">
-                    <select
-                      value={novoDestinoId}
-                      onChange={(e) => {
-                        setNovoDestinoId(e.target.value);
-                        if (e.target.value !== 'outro') setNovoDestinoNome('');
-                      }}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
-                    >
+                    <select value={novoDestinoId} onChange={(e) => { setNovoDestinoId(e.target.value); if (e.target.value !== 'outro') setNovoDestinoNome(''); }} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none">
                       <option value="">Selecione...</option>
-                      {ubsList.map((ubs) => (
-                        <option key={ubs.id} value={ubs.id}>{ubs.nome}</option>
-                      ))}
+                      {ubsList.map((ubs) => (<option key={ubs.id} value={ubs.id}>{ubs.nome}</option>))}
                       <option value="outro">Outro (informar manualmente)</option>
                     </select>
                     {novoDestinoId === 'outro' && (
-                      <input
-                        type="text"
-                        value={novoDestinoNome}
-                        onChange={(e) => setNovoDestinoNome(e.target.value)}
-                        placeholder="Nome do local"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
-                      />
+                      <input type="text" value={novoDestinoNome} onChange={(e) => setNovoDestinoNome(e.target.value)} placeholder="Nome do local" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
                     )}
-                    <input
-                      type="text"
-                      value={novoDestinoEndereco}
-                      onChange={(e) => setNovoDestinoEndereco(e.target.value)}
-                      placeholder="Endereço"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
-                    />
+                    <input type="text" value={novoDestinoEndereco} onChange={(e) => setNovoDestinoEndereco(e.target.value)} placeholder="Endereço" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
                     <div className="flex gap-2">
                       <button onClick={salvarDestino} className="flex-1 py-1.5 bg-green-600 text-white rounded text-xs">Salvar</button>
                       <button onClick={cancelarEdicao} className="flex-1 py-1.5 bg-gray-200 text-gray-700 rounded text-xs">Cancelar</button>
@@ -497,9 +459,7 @@ export default function DetalhesViagemPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="font-medium text-gray-900">
-                      {viagem.ubs_destino_nome || viagem.hospital_destino}
-                    </div>
+                    <div className="font-medium text-gray-900">{viagem.ubs_destino_nome || viagem.hospital_destino}</div>
                     {(viagem.ubs_destino_endereco || viagem.endereco_destino) && (
                        <div className="text-sm text-gray-500 mt-1">{viagem.ubs_destino_endereco || viagem.endereco_destino}</div>
                     )}
@@ -523,6 +483,30 @@ export default function DetalhesViagemPage() {
                     style={{ width: `${Math.min((totalPacientes / viagem.numero_vagas) * 100, 100)}%` }}
                   ></div>
                 </div>
+                
+                {/* 3.3. Indicador de Comparecimento */}
+                {totalPacientes > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Comparecimento:</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-green-600">
+                          {pacientes.filter(p => p.compareceu).length}
+                        </span>
+                        <span className="text-gray-400">/</span>
+                        <span className="font-bold text-gray-900">{totalPacientes}</span>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-green-500 transition-all"
+                        style={{ 
+                          width: `${(pacientes.filter(p => p.compareceu).length / totalPacientes) * 100}%` 
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -536,37 +520,25 @@ export default function DetalhesViagemPage() {
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
                 {/* Motorista */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-gray-500">Motorista</div>
                       {ehAdministrador && !modoEdicao && (
                         <button onClick={iniciarEdicaoMotorista} className="text-blue-600 hover:text-blue-800" title="Editar Motorista">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
                       )}
                     </div>
-
                     {editandoCampo === 'motorista' ? (
                       <div className="mt-2 space-y-2">
-                        <select
-                          value={novoMotoristaId}
-                          onChange={(e) => setNovoMotoristaId(e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
-                        >
+                        <select value={novoMotoristaId} onChange={(e) => setNovoMotoristaId(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none">
                           <option value="">Nenhum motorista</option>
-                          {motoristas.map((m) => (
-                            <option key={m.id} value={m.id}>{m.nome_completo}</option>
-                          ))}
+                          {motoristas.map((m) => (<option key={m.id} value={m.id}>{m.nome_completo}</option>))}
                         </select>
                         <div className="flex gap-2">
                           <button onClick={salvarMotorista} className="flex-1 py-1.5 bg-green-600 text-white rounded text-xs">Salvar</button>
@@ -576,9 +548,7 @@ export default function DetalhesViagemPage() {
                     ) : (
                       <>
                         <div className="font-medium text-gray-900">{viagem.motorista_nome || 'Não definido'}</div>
-                        {viagem.motorista_telefone && (
-                          <div className="text-xs text-gray-500">{viagem.motorista_telefone}</div>
-                        )}
+                        {viagem.motorista_telefone && <div className="text-xs text-gray-500">{viagem.motorista_telefone}</div>}
                       </>
                     )}
                   </div>
@@ -587,33 +557,22 @@ export default function DetalhesViagemPage() {
                 {/* Ônibus */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-gray-500">Veículo</div>
                       {ehAdministrador && !modoEdicao && (
                         <button onClick={iniciarEdicaoOnibus} className="text-blue-600 hover:text-blue-800" title="Editar Ônibus">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
                       )}
                     </div>
-
                     {editandoCampo === 'onibus' ? (
                       <div className="mt-2 space-y-2">
-                        <select
-                          value={novoOnibusId}
-                          onChange={(e) => setNovoOnibusId(e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
-                        >
+                        <select value={novoOnibusId} onChange={(e) => setNovoOnibusId(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none">
                           <option value="">Nenhum ônibus</option>
-                          {onibus.map((o) => (
-                            <option key={o.id} value={o.id}>{o.placa} - {o.modelo}</option>
-                          ))}
+                          {onibus.map((o) => (<option key={o.id} value={o.id}>{o.placa} - {o.modelo}</option>))}
                         </select>
                         <div className="flex gap-2">
                           <button onClick={salvarOnibus} className="flex-1 py-1.5 bg-green-600 text-white rounded text-xs">Salvar</button>
@@ -625,9 +584,7 @@ export default function DetalhesViagemPage() {
                         {viagem.onibus_placa ? (
                           <>
                             <div className="font-medium text-gray-900">{viagem.onibus_placa}</div>
-                            <div className="text-xs text-gray-500">
-                              {viagem.onibus_modelo} {viagem.onibus_cor ? `• ${viagem.onibus_cor}` : ''}
-                            </div>
+                            <div className="text-xs text-gray-500">{viagem.onibus_modelo} {viagem.onibus_cor ? `• ${viagem.onibus_cor}` : ''}</div>
                           </>
                         ) : (
                           <div className="text-sm text-gray-400 italic">Não definido</div>
@@ -642,51 +599,89 @@ export default function DetalhesViagemPage() {
           </div>
         </div>
 
-        {/* Lista de Pacientes */}
+        {/* 3.2. Lista de Pacientes (SUBSTITUÍDA) */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Lista de Passageiros</h2>
           
           {pacientes.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              Nenhum paciente adicionado a esta viagem.
+            <div className="text-center py-8 text-gray-400 border border-dashed rounded-lg">
+              Nenhum paciente cadastrado nesta viagem ainda.
             </div>
           ) : (
             <div className="space-y-3">
               {pacientes.map((paciente) => (
-                <div 
-                  key={paciente.paciente_id || Math.random()}
-                  className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                <div
+                  key={paciente.paciente_id}
+                  onClick={() => handleAbrirCheckin(paciente)}
+                  className={`
+                    border rounded-lg p-4 cursor-pointer transition-all
+                    ${paciente.compareceu 
+                       ? 'bg-green-50 border-green-300 hover:bg-green-100' 
+                       : 'bg-white border-gray-200 hover:border-primary hover:shadow-md'
+                    }
+                  `}
                 >
-                  <div 
-                    onClick={() => handleVerPaciente(paciente.cpf)}
-                    className="flex items-center gap-3 cursor-pointer flex-1"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
-                      {paciente.nome_completo?.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900 group-hover:text-primary">
-                        {paciente.nome_completo}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-gray-900">
+                          {paciente.nome_completo}
+                        </h4>
+                        {paciente.compareceu && (
+                          <span className="flex items-center gap-1 bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                            EMBARCADO
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        CPF: {paciente.cpf} • SUS: {paciente.cartao_sus}
+                      <div className="text-xs text-gray-600 space-y-0.5">
+                        <div>CPF: {paciente.cpf}</div>
+                        <div>Cartão SUS: {paciente.cartao_sus}</div>
                       </div>
+                      {paciente.motivo && (
+                        <div className="mt-2 text-sm text-gray-700">
+                          <span className="font-medium">Motivo:</span> {paciente.motivo}
+                        </div>
+                      )}
+                      {paciente.horario_consulta && (
+                        <div className="text-xs text-gray-600 mt-1">
+                          Consulta: {paciente.horario_consulta.substring(0, 5)}
+                        </div>
+                      )}
                       {paciente.paciente_ubs_nome && (
-                         <div className="text-xs text-gray-400 mt-0.5">UBS: {paciente.paciente_ubs_nome}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          UBS: {paciente.paciente_ubs_nome}
+                        </div>
+                      )}
+                    </div>
+                    <div className={`ml-3 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                      ${paciente.compareceu ? 'bg-green-600' : 'bg-gray-200'}
+                    `}>
+                      {paciente.compareceu ? (
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       )}
                     </div>
                   </div>
-                  
-                  {/* Botão Remover Paciente (Apenas Admin) */}
                   {ehAdministrador && (
                     <button
-                      onClick={() => removerPacienteViagem(paciente.paciente_id)}
-                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all"
-                      title="Remover passageiro"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removerPacienteViagem(paciente.paciente_id);
+                      }}
+                      className="mt-3 text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
+                      Remover
                     </button>
                   )}
                 </div>
