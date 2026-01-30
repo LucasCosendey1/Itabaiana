@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 
 /**
  * API ROUTE PARA CADASTRO DE NOVOS USUÁRIOS
- * Suporta cadastro de Administradores e Pacientes
+ * Suporta cadastro de Administradores, Pacientes, Motoristas e Médicos
  */
 
 // Conexão com o banco de dados
@@ -40,8 +40,8 @@ export async function POST(request) {
       );
     }
 
-    // Verificar se é um tipo permitido para cadastro público
-    if (!['administrador', 'paciente'].includes(dados.tipo_usuario)) {
+    // Verificar se é um tipo permitido para cadastro público (ATUALIZADO COM MEDICO)
+    if (!['administrador', 'paciente', 'motorista', 'medico'].includes(dados.tipo_usuario)) {
       return NextResponse.json(
         { erro: 'Tipo de usuário não permitido para cadastro público' },
         { status: 400 }
@@ -137,7 +137,7 @@ export async function POST(request) {
             dados.paciente.responsavel_familiar || false
           ]
         );
-      } // <--- FECHAMENTO DE CHAVES ADICIONADO AQUI
+      } 
       
       else if (dados.tipo_usuario === 'administrador') {
         // Validar campos obrigatórios do administrador
@@ -156,6 +156,92 @@ export async function POST(request) {
             'Geral' // Setor padrão
           ]
         );
+      }
+
+      else if (dados.tipo_usuario === 'motorista') {
+        // Validar campos obrigatórios do motorista
+        if (!dados.motorista || !dados.motorista.cnh || !dados.motorista.categoria_cnh || !dados.motorista.validade_cnh) {
+          throw new Error('Dados obrigatórios do motorista não fornecidos');
+        }
+
+        // Verificar se CNH já existe
+        const cnhExistente = await client.query(
+          'SELECT id FROM motoristas WHERE cnh = $1',
+          [dados.motorista.cnh]
+        );
+
+        if (cnhExistente.rows.length > 0) {
+          throw new Error('CNH já cadastrada no sistema');
+        }
+
+        await client.query(
+          `INSERT INTO motoristas 
+            (usuario_id, cnh, categoria_cnh, validade_cnh, veiculo_placa, veiculo_modelo, capacidade_passageiros)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            usuarioId,
+            dados.motorista.cnh,
+            dados.motorista.categoria_cnh,
+            dados.motorista.validade_cnh,
+            dados.motorista.veiculo_placa || null,
+            dados.motorista.veiculo_modelo || null,
+            dados.motorista.capacidade_passageiros || null
+          ]
+        );
+      }
+
+      // --- LÓGICA DO MÉDICO ADICIONADA AQUI ---
+      else if (dados.tipo_usuario === 'medico') {
+        // Validar campos obrigatórios do médico
+        if (!dados.medico || !dados.medico.crm || !dados.medico.especializacao) {
+          throw new Error('Dados obrigatórios do médico não fornecidos');
+        }
+
+        if (!dados.medico.vinculos || dados.medico.vinculos.length === 0) {
+          throw new Error('Adicione pelo menos um vínculo hospitalar');
+        }
+
+        // Verificar se CRM já existe
+        const crmExistente = await client.query(
+          'SELECT id FROM medicos WHERE crm = $1',
+          [dados.medico.crm]
+        );
+
+        if (crmExistente.rows.length > 0) {
+          throw new Error('CRM já cadastrado no sistema');
+        }
+
+        // Inserir médico
+        const resultMedico = await client.query(
+          `INSERT INTO medicos 
+            (usuario_id, crm, especializacao) 
+            VALUES ($1, $2, $3) 
+           RETURNING id`,
+          [
+            usuarioId,
+            dados.medico.crm,
+            dados.medico.especializacao
+          ]
+        );
+
+        const medicoId = resultMedico.rows[0].id;
+
+        // Inserir vínculos hospitalares
+        for (const vinculo of dados.medico.vinculos) {
+          await client.query(
+            `INSERT INTO medico_vinculos 
+              (medico_id, ubs_id, hospital_nome, atuacao, dias_atendimento, horario_atendimento) 
+              VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              medicoId,
+              vinculo.hospital_id, // Pode ser null se for 'Outro' ou hospital externo
+              vinculo.hospital_nome,
+              vinculo.atuacao,
+              vinculo.dias_atendimento,
+              vinculo.horario_atendimento
+            ]
+          );
+        }
       }
 
       // Commit da transação

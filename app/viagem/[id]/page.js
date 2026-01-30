@@ -4,32 +4,55 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '../../components/Header';
-import { verificarAutenticacao, formatarData, formatarHora, formatarStatus } from '../../utils/helpers';
+import { verificarAutenticacao, formatarData, formatarHora, formatarStatus, getCorStatus } from '../../utils/helpers';
 
 /**
  * PÁGINA DE DETALHES DA VIAGEM
+ * Com funcionalidades de edição e remoção para administradores
  */
 export default function DetalhesViagemPage() {
   const router = useRouter();
   const params = useParams();
+  
+  // Estados principais
   const [viagem, setViagem] = useState(null);
   const [pacientes, setPacientes] = useState([]);
+  const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [confirmando, setConfirmando] = useState(false);
   const [usuarioLogado, setUsuarioLogado] = useState(null);
+
+  // Estados de Edição
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [editandoCampo, setEditandoCampo] = useState(null); // 'motorista', 'onibus', 'destino', 'datahora'
+
+  // Estados temporários para formulários de edição
+  const [novoMotoristaId, setNovoMotoristaId] = useState('');
+  const [novoOnibusId, setNovoOnibusId] = useState('');
+  const [novoDestinoId, setNovoDestinoId] = useState('');
+  const [novoDestinoNome, setNovoDestinoNome] = useState('');
+  const [novoDestinoEndereco, setNovoDestinoEndereco] = useState('');
+  const [novaDataViagem, setNovaDataViagem] = useState('');
+  const [novoHorarioSaida, setNovoHorarioSaida] = useState('');
+
+  // Dados auxiliares para os selects
+  const [motoristas, setMotoristas] = useState([]);
+  const [onibus, setOnibus] = useState([]);
+  const [ubsList, setUbsList] = useState([]);
 
   useEffect(() => {
     const autenticado = verificarAutenticacao(router);
     if (autenticado) {
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       if (token) {
-        const usuario = JSON.parse(token);
-        setUsuarioLogado(usuario);
+        setUsuarioLogado(JSON.parse(token));
       }
     }
-    
+
     if (params?.id) {
       carregarViagem();
+      carregarDadosAuxiliares();
     }
   }, [params.id, router]);
 
@@ -41,6 +64,7 @@ export default function DetalhesViagemPage() {
       if (response.ok) {
         setViagem(data.viagem);
         setPacientes(data.pacientes || []);
+        setHistorico(data.historico || []);
       } else {
         setErro(data.erro || 'Viagem não encontrada');
       }
@@ -49,6 +73,237 @@ export default function DetalhesViagemPage() {
       console.error('Erro:', error);
     } finally {
       setCarregando(false);
+    }
+  };
+
+  const carregarDadosAuxiliares = async () => {
+    try {
+      const [resMotoristas, resOnibus, resUbs] = await Promise.all([
+        fetch('/api/listar-motoristas'),
+        fetch('/api/listar-onibus'),
+        fetch('/api/listar-ubs')
+      ]);
+
+      if (resMotoristas.ok) {
+        const data = await resMotoristas.json();
+        setMotoristas(data.motoristas || []);
+      }
+      if (resOnibus.ok) {
+        const data = await resOnibus.json();
+        setOnibus(data.onibus || []);
+      }
+      if (resUbs.ok) {
+        const data = await resUbs.json();
+        setUbsList(data.ubs || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados auxiliares:', error);
+    }
+  };
+
+  // ============================================
+  // FUNÇÕES DE EDIÇÃO
+  // ============================================
+
+  const cancelarEdicao = () => {
+    setModoEdicao(false);
+    setEditandoCampo(null);
+    setErro('');
+  };
+
+  const formatarHorarioInput = (valor) => {
+    const numeros = valor.replace(/\D/g, '');
+    if (numeros.length <= 2) return numeros;
+    if (numeros.length <= 4) return `${numeros.slice(0, 2)}h${numeros.slice(2)}`;
+    return `${numeros.slice(0, 2)}h${numeros.slice(2, 4)}`;
+  };
+
+  // --- MOTORISTA ---
+  const iniciarEdicaoMotorista = () => {
+    setNovoMotoristaId(viagem.motorista_id || '');
+    setEditandoCampo('motorista');
+    setModoEdicao(true);
+  };
+
+  const salvarMotorista = async () => {
+    try {
+      const response = await fetch(`/api/atualizar-viagem/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motorista_id: novoMotoristaId || null })
+      });
+      if (response.ok) {
+        carregarViagem();
+        cancelarEdicao();
+      } else {
+        const data = await response.json();
+        setErro(data.erro || 'Erro ao atualizar motorista');
+      }
+    } catch (error) {
+      setErro('Erro ao conectar com o servidor');
+    }
+  };
+
+  // --- ÔNIBUS ---
+  const iniciarEdicaoOnibus = () => {
+    setNovoOnibusId(viagem.onibus_id || '');
+    setEditandoCampo('onibus');
+    setModoEdicao(true);
+  };
+
+  const salvarOnibus = async () => {
+    try {
+      // Buscar capacidade do ônibus selecionado para atualizar numero_vagas se necessário
+      const onibusSelecionado = onibus.find(o => o.id === parseInt(novoOnibusId));
+      const payload = { onibus_id: novoOnibusId || null };
+      
+      if(onibusSelecionado) {
+          payload.numero_vagas = onibusSelecionado.capacidade_passageiros;
+      }
+
+      const response = await fetch(`/api/atualizar-viagem/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        carregarViagem();
+        cancelarEdicao();
+      } else {
+        const data = await response.json();
+        setErro(data.erro || 'Erro ao atualizar ônibus');
+      }
+    } catch (error) {
+      setErro('Erro ao conectar com o servidor');
+    }
+  };
+
+  // --- DESTINO ---
+  const iniciarEdicaoDestino = () => {
+    setNovoDestinoId(viagem.ubs_destino_id || 'outro');
+    setNovoDestinoNome(viagem.ubs_destino_nome || viagem.hospital_destino || '');
+    setNovoDestinoEndereco(viagem.ubs_destino_endereco || viagem.endereco_destino || '');
+    setEditandoCampo('destino');
+    setModoEdicao(true);
+  };
+
+  const salvarDestino = async () => {
+    try {
+      // Se for UBS, pegamos o nome dela da lista
+      let nomeFinal = novoDestinoNome;
+      if (novoDestinoId !== 'outro') {
+          const ubsSel = ubsList.find(u => u.id === parseInt(novoDestinoId));
+          if(ubsSel) nomeFinal = ubsSel.nome;
+      }
+
+      const dados = {
+        ubs_destino_id: novoDestinoId !== 'outro' ? parseInt(novoDestinoId) : null,
+        hospital_destino: nomeFinal,
+        endereco_destino: novoDestinoEndereco || null
+      };
+      
+      const response = await fetch(`/api/atualizar-viagem/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+      });
+      if (response.ok) {
+        carregarViagem();
+        cancelarEdicao();
+      } else {
+        const data = await response.json();
+        setErro(data.erro || 'Erro ao atualizar destino');
+      }
+    } catch (error) {
+      setErro('Erro ao conectar com o servidor');
+    }
+  };
+
+  // --- DATA E HORA ---
+  const iniciarEdicaoDataHora = () => {
+    // data_viagem vem como string YYYY-MM-DD ou Date object
+    const dataFormatada = typeof viagem.data_viagem === 'string' 
+      ? viagem.data_viagem.split('T')[0] 
+      : new Date(viagem.data_viagem).toISOString().split('T')[0];
+
+    setNovaDataViagem(dataFormatada);
+    setNovoHorarioSaida(viagem.horario_saida ? viagem.horario_saida.substring(0, 5).replace(':', 'h') : '');
+    setEditandoCampo('datahora');
+    setModoEdicao(true);
+  };
+
+  const salvarDataHora = async () => {
+    try {
+      const horarioConvertido = novoHorarioSaida.replace('h', ':');
+      
+      const response = await fetch(`/api/atualizar-viagem/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data_viagem: novaDataViagem,
+          horario_saida: horarioConvertido
+        })
+      });
+      if (response.ok) {
+        carregarViagem();
+        cancelarEdicao();
+      } else {
+        const data = await response.json();
+        setErro(data.erro || 'Erro ao atualizar data/hora');
+      }
+    } catch (error) {
+      setErro('Erro ao conectar com o servidor');
+    }
+  };
+
+  // --- REMOVER PACIENTE ---
+  const removerPacienteViagem = async (pacienteId) => {
+    if (!confirm('Tem certeza que deseja remover este paciente da viagem?')) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/remover-paciente-viagem`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          viagem_id: viagem.viagem_id, // Importante: usar o ID numérico da tabela
+          paciente_id: pacienteId
+        })
+      });
+      if (response.ok) {
+        carregarViagem(); // Recarrega para atualizar a lista e contadores
+      } else {
+        const data = await response.json();
+        setErro(data.erro || 'Erro ao remover paciente');
+      }
+    } catch (error) {
+      setErro('Erro ao conectar com o servidor');
+    }
+  };
+
+  // --- AÇÕES GERAIS ---
+  const handleConfirmarViagem = async () => {
+    if (!confirm('Tem certeza que deseja confirmar esta viagem?')) return;
+    
+    setConfirmando(true);
+    try {
+      const response = await fetch(`/api/viagem/${params.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'confirmado' })
+      });
+      
+      if (response.ok) {
+        carregarViagem();
+        alert('Viagem confirmada com sucesso!');
+      } else {
+        alert('Erro ao confirmar viagem');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Erro de conexão');
+    } finally {
+      setConfirmando(false);
     }
   };
 
@@ -61,32 +316,11 @@ export default function DetalhesViagemPage() {
     router.push(`/paciente/${cpfLimpo}`);
   };
 
-  // ADMINISTRADOR: Baixa lista completa de passageiros
-  const handleBaixarListaCompleta = () => {
+  const handleBaixarPDF = () => {
     if (viagem && viagem.codigo_viagem) {
-      window.open(`/api/gerar-comprovante-viagem/${viagem.codigo_viagem}`, '_blank');
+      window.open(`/api/gerar-comprovante/${viagem.codigo_viagem}`, '_blank');
     } else {
       alert('Código da viagem não disponível');
-    }
-  };
-
-  // PACIENTE: Baixa apenas SEU comprovante
-  const handleBaixarMeuComprovante = () => {
-    if (viagem && viagem.codigo_viagem && usuarioLogado && usuarioLogado.cpf) {
-      const cpfLimpo = usuarioLogado.cpf.replace(/\D/g, '');
-      window.open(`/api/gerar-comprovante-paciente/${viagem.codigo_viagem}/${cpfLimpo}`, '_blank');
-    } else {
-      alert('Dados insuficientes para gerar comprovante');
-    }
-  };
-
-  // ADMINISTRADOR: Baixa comprovante de UM paciente específico
-  const handleBaixarComprovantePaciente = (cpf) => {
-    if (viagem && viagem.codigo_viagem && cpf) {
-      const cpfLimpo = cpf.replace(/\D/g, '');
-      window.open(`/api/gerar-comprovante-paciente/${viagem.codigo_viagem}/${cpfLimpo}`, '_blank');
-    } else {
-      alert('Dados insuficientes');
     }
   };
 
@@ -117,80 +351,167 @@ export default function DetalhesViagemPage() {
     );
   }
 
+  const ehAdministrador = usuarioLogado?.role === 'administrador';
   const totalPacientes = pacientes.length;
   const vagasDisponiveis = viagem.numero_vagas - totalPacientes;
   const viagemLotada = vagasDisponiveis <= 0;
-  const ehAdministrador = usuarioLogado?.role === 'administrador';
-  const ehPaciente = usuarioLogado?.role === 'paciente';
-
-  // Verifica se o usuário logado está nesta viagem
-  const pacienteLogadoNaViagem = ehPaciente ? pacientes.find(p => {
-    const cpfPaciente = p.cpf.replace(/\D/g, '');
-    const cpfLogado = usuarioLogado.cpf.replace(/\D/g, '');
-    return cpfPaciente === cpfLogado;
-  }) : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
-        titulo="Detalhes da Viagem" 
-        mostrarVoltar 
-        voltarPara={ehAdministrador ? "/gerenciar-viagens" : "/busca"} 
-      />
+      <Header titulo="Detalhes da Viagem" mostrarVoltar voltarPara="/gerenciar-viagens" />
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         
         {/* Card Principal */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
           
-          {/* Cabeçalho do Card */}
-          <div className="bg-gradient-to-r from-primary to-blue-600 text-white p-6">
+          {/* Cabeçalho do Card (DATA E HORA) */}
+          <div className="bg-gradient-to-r from-primary to-blue-600 text-white p-6 relative">
+            
+            {/* Botão de Editar Data/Hora (Apenas Admin) */}
+            {ehAdministrador && !modoEdicao && (
+              <button 
+                onClick={iniciarEdicaoDataHora}
+                className="absolute top-6 right-6 text-blue-100 hover:text-white transition-colors bg-white/10 p-2 rounded-lg"
+                title="Editar Data e Hora"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+            )}
+
             <div className="flex justify-between items-start mb-4">
               <div>
                 <div className="text-blue-100 text-sm font-medium mb-1">CÓDIGO</div>
                 <div className="text-2xl font-bold tracking-wider">{viagem.codigo_viagem}</div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase shadow-sm ${
-                viagem.status === 'confirmado' ? 'bg-green-500 text-white' : 
-                viagem.status === 'cancelado' ? 'bg-red-500 text-white' : 
-                'bg-yellow-400 text-yellow-900'
-              }`}>
-                {formatarStatus(viagem.status)}
-              </span>
+              {!editandoCampo && (
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase shadow-sm ${
+                  viagem.status === 'confirmado' ? 'bg-green-500 text-white' : 
+                  viagem.status === 'cancelado' ? 'bg-red-500 text-white' : 
+                  'bg-yellow-400 text-yellow-900'
+                }`}>
+                  {formatarStatus(viagem.status)}
+                </span>
+              )}
             </div>
 
-            <div className="flex items-center gap-6 mt-2">
-              <div>
-                <div className="text-blue-100 text-xs uppercase mb-1">Data</div>
-                <div className="text-xl font-semibold">{formatarData(viagem.data_viagem)}</div>
+            {editandoCampo === 'datahora' ? (
+              <div className="bg-white/10 p-4 rounded-lg mt-2 space-y-3 border border-white/20">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-blue-100 mb-1">Nova Data</label>
+                    <input
+                      type="date"
+                      value={novaDataViagem}
+                      onChange={(e) => setNovaDataViagem(e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded text-gray-900 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-blue-100 mb-1">Novo Horário</label>
+                    <input
+                      type="text"
+                      value={novoHorarioSaida}
+                      onChange={(e) => setNovoHorarioSaida(formatarHorarioInput(e.target.value))}
+                      placeholder="00h00"
+                      className="w-full px-3 py-2 text-sm rounded text-gray-900 outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button onClick={salvarDataHora} className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white rounded text-sm font-medium">Salvar</button>
+                  <button onClick={cancelarEdicao} className="flex-1 py-2 bg-white/20 hover:bg-white/30 text-white rounded text-sm font-medium">Cancelar</button>
+                </div>
               </div>
-              <div className="w-px h-10 bg-blue-400/30"></div>
-              <div>
-                <div className="text-blue-100 text-xs uppercase mb-1">Saída</div>
-                <div className="text-xl font-semibold">{formatarHora(viagem.horario_saida)}</div>
+            ) : (
+              <div className="flex items-center gap-6 mt-2">
+                <div>
+                  <div className="text-blue-100 text-xs uppercase mb-1">Data</div>
+                  <div className="text-xl font-semibold">{formatarData(viagem.data_viagem)}</div>
+                </div>
+                <div className="w-px h-10 bg-blue-400/30"></div>
+                <div>
+                  <div className="text-blue-100 text-xs uppercase mb-1">Saída</div>
+                  <div className="text-xl font-semibold">{formatarHora(viagem.horario_saida)}</div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Informações Detalhadas */}
           <div className="p-6 space-y-6">
             
-            {/* Destino e Vagas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Destino</h3>
-                <div className="font-medium text-gray-900">
-                  {viagem.ubs_destino_nome || viagem.hospital_destino}
+              
+              {/* Card DESTINO */}
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase">Destino</h3>
+                  {ehAdministrador && !modoEdicao && (
+                    <button onClick={iniciarEdicaoDestino} className="text-blue-600 hover:text-blue-800" title="Editar Destino">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
-                {(viagem.ubs_destino_endereco || viagem.endereco_destino) && (
-                   <div className="text-sm text-gray-500 mt-1">{viagem.ubs_destino_endereco || viagem.endereco_destino}</div>
-                )}
-                {viagem.ubs_destino_nome && (
-                   <div className="text-xs text-blue-600 mt-1 font-medium">Unidade Básica de Saúde</div>
+
+                {editandoCampo === 'destino' ? (
+                  <div className="space-y-3">
+                    <select
+                      value={novoDestinoId}
+                      onChange={(e) => {
+                        setNovoDestinoId(e.target.value);
+                        if (e.target.value !== 'outro') setNovoDestinoNome('');
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
+                    >
+                      <option value="">Selecione...</option>
+                      {ubsList.map((ubs) => (
+                        <option key={ubs.id} value={ubs.id}>{ubs.nome}</option>
+                      ))}
+                      <option value="outro">Outro (informar manualmente)</option>
+                    </select>
+                    {novoDestinoId === 'outro' && (
+                      <input
+                        type="text"
+                        value={novoDestinoNome}
+                        onChange={(e) => setNovoDestinoNome(e.target.value)}
+                        placeholder="Nome do local"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
+                      />
+                    )}
+                    <input
+                      type="text"
+                      value={novoDestinoEndereco}
+                      onChange={(e) => setNovoDestinoEndereco(e.target.value)}
+                      placeholder="Endereço"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={salvarDestino} className="flex-1 py-1.5 bg-green-600 text-white rounded text-xs">Salvar</button>
+                      <button onClick={cancelarEdicao} className="flex-1 py-1.5 bg-gray-200 text-gray-700 rounded text-xs">Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="font-medium text-gray-900">
+                      {viagem.ubs_destino_nome || viagem.hospital_destino}
+                    </div>
+                    {(viagem.ubs_destino_endereco || viagem.endereco_destino) && (
+                       <div className="text-sm text-gray-500 mt-1">{viagem.ubs_destino_endereco || viagem.endereco_destino}</div>
+                    )}
+                    {viagem.ubs_destino_nome && (
+                       <div className="text-xs text-blue-600 mt-1 font-medium">Unidade Básica de Saúde</div>
+                    )}
+                  </>
                 )}
               </div>
 
-              <div className="p-4 bg-gray-50 rounded-lg">
+              {/* Card OCUPAÇÃO */}
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
                 <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Ocupação</h3>
                 <div className="flex items-end gap-2">
                   <span className="text-2xl font-bold text-gray-900">{totalPacientes}</span>
@@ -215,6 +536,7 @@ export default function DetalhesViagemPage() {
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
                 {/* Motorista */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
@@ -222,11 +544,42 @@ export default function DetalhesViagemPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Motorista</div>
-                    <div className="font-medium text-gray-900">{viagem.motorista_nome || 'Não definido'}</div>
-                    {viagem.motorista_telefone && (
-                      <div className="text-xs text-gray-500">{viagem.motorista_telefone}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-500">Motorista</div>
+                      {ehAdministrador && !modoEdicao && (
+                        <button onClick={iniciarEdicaoMotorista} className="text-blue-600 hover:text-blue-800" title="Editar Motorista">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+
+                    {editandoCampo === 'motorista' ? (
+                      <div className="mt-2 space-y-2">
+                        <select
+                          value={novoMotoristaId}
+                          onChange={(e) => setNovoMotoristaId(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
+                        >
+                          <option value="">Nenhum motorista</option>
+                          {motoristas.map((m) => (
+                            <option key={m.id} value={m.id}>{m.nome_completo}</option>
+                          ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <button onClick={salvarMotorista} className="flex-1 py-1.5 bg-green-600 text-white rounded text-xs">Salvar</button>
+                          <button onClick={cancelarEdicao} className="flex-1 py-1.5 bg-gray-200 text-gray-700 rounded text-xs">Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="font-medium text-gray-900">{viagem.motorista_nome || 'Não definido'}</div>
+                        {viagem.motorista_telefone && (
+                          <div className="text-xs text-gray-500">{viagem.motorista_telefone}</div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -238,17 +591,48 @@ export default function DetalhesViagemPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                     </svg>
                   </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Veículo</div>
-                    {viagem.onibus_placa ? (
-                      <>
-                        <div className="font-medium text-gray-900">{viagem.onibus_placa}</div>
-                        <div className="text-xs text-gray-500">
-                          {viagem.onibus_modelo} {viagem.onibus_cor ? `• ${viagem.onibus_cor}` : ''}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-500">Veículo</div>
+                      {ehAdministrador && !modoEdicao && (
+                        <button onClick={iniciarEdicaoOnibus} className="text-blue-600 hover:text-blue-800" title="Editar Ônibus">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+
+                    {editandoCampo === 'onibus' ? (
+                      <div className="mt-2 space-y-2">
+                        <select
+                          value={novoOnibusId}
+                          onChange={(e) => setNovoOnibusId(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none"
+                        >
+                          <option value="">Nenhum ônibus</option>
+                          {onibus.map((o) => (
+                            <option key={o.id} value={o.id}>{o.placa} - {o.modelo}</option>
+                          ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <button onClick={salvarOnibus} className="flex-1 py-1.5 bg-green-600 text-white rounded text-xs">Salvar</button>
+                          <button onClick={cancelarEdicao} className="flex-1 py-1.5 bg-gray-200 text-gray-700 rounded text-xs">Cancelar</button>
                         </div>
-                      </>
+                      </div>
                     ) : (
-                      <div className="text-sm text-gray-400 italic">Não definido</div>
+                      <>
+                        {viagem.onibus_placa ? (
+                          <>
+                            <div className="font-medium text-gray-900">{viagem.onibus_placa}</div>
+                            <div className="text-xs text-gray-500">
+                              {viagem.onibus_modelo} {viagem.onibus_cor ? `• ${viagem.onibus_cor}` : ''}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-sm text-gray-400 italic">Não definido</div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -260,16 +644,13 @@ export default function DetalhesViagemPage() {
 
         {/* Lista de Pacientes */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">
-            {ehAdministrador ? 'Lista de Passageiros' : 'Informações da Viagem'}
-          </h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Lista de Passageiros</h2>
           
           {pacientes.length === 0 ? (
             <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
               Nenhum paciente adicionado a esta viagem.
             </div>
-          ) : ehAdministrador ? (
-            // ADMINISTRADOR: Vê TODOS os pacientes com botão individual
+          ) : (
             <div className="space-y-3">
               {pacientes.map((paciente) => (
                 <div 
@@ -278,7 +659,7 @@ export default function DetalhesViagemPage() {
                 >
                   <div 
                     onClick={() => handleVerPaciente(paciente.cpf)}
-                    className="flex items-center gap-3 flex-1 cursor-pointer"
+                    className="flex items-center gap-3 cursor-pointer flex-1"
                   >
                     <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
                       {paciente.nome_completo?.charAt(0)}
@@ -288,83 +669,59 @@ export default function DetalhesViagemPage() {
                         {paciente.nome_completo}
                       </div>
                       <div className="text-xs text-gray-500">
-                        CPF: {paciente.cpf} • Sexo: {paciente.sexo || '-'}
+                        CPF: {paciente.cpf} • SUS: {paciente.cartao_sus}
                       </div>
                       {paciente.paciente_ubs_nome && (
                          <div className="text-xs text-gray-400 mt-0.5">UBS: {paciente.paciente_ubs_nome}</div>
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleBaixarComprovantePaciente(paciente.cpf)}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-all flex items-center gap-1"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    PDF
-                  </button>
+                  
+                  {/* Botão Remover Paciente (Apenas Admin) */}
+                  {ehAdministrador && (
+                    <button
+                      onClick={() => removerPacienteViagem(paciente.paciente_id)}
+                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all"
+                      title="Remover passageiro"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               ))}
-            </div>
-          ) : pacienteLogadoNaViagem ? (
-            // PACIENTE: Vê apenas SEUS dados
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xl">
-                  {pacienteLogadoNaViagem.nome_completo?.charAt(0)}
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">{pacienteLogadoNaViagem.nome_completo}</div>
-                  <div className="text-sm text-gray-600">Você está cadastrado nesta viagem</div>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div><span className="font-medium">CPF:</span> {pacienteLogadoNaViagem.cpf}</div>
-                <div><span className="font-medium">Sexo:</span> {pacienteLogadoNaViagem.sexo || 'Não informado'}</div>
-                {pacienteLogadoNaViagem.motivo && (
-                  <div><span className="font-medium">Motivo:</span> {pacienteLogadoNaViagem.motivo}</div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              Você não está cadastrado nesta viagem.
             </div>
           )}
         </div>
 
         {/* Ações */}
         <div className="space-y-3">
-          {/* BOTÕES DE COMPROVANTE */}
-          {ehAdministrador ? (
-            // ADMINISTRADOR: Botão de lista completa
-            <button
-              onClick={handleBaixarListaCompleta}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Baixar Lista Completa (PDF)
-            </button>
-          ) : pacienteLogadoNaViagem ? (
-            // PACIENTE: Botão do SEU comprovante
-            <button
-              onClick={handleBaixarMeuComprovante}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Baixar Meu Comprovante (PDF)
-            </button>
-          ) : null}
+          {/* Botão de PDF */}
+          <button
+            onClick={handleBaixarPDF}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Baixar Comprovante (PDF)
+          </button>
 
-          {/* BOTÕES DE AÇÃO - APENAS ADMINISTRADOR */}
+          {/* Botão Confirmar Viagem (apenas se pendente) */}
+          {viagem.status === 'pendente' && ehAdministrador && (
+            <button
+              onClick={handleConfirmarViagem}
+              disabled={confirmando}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
+            >
+              {confirmando ? 'Confirmando...' : 'Confirmar Realização da Viagem'}
+            </button>
+          )}
+
           {ehAdministrador && (
             <div className="grid grid-cols-2 gap-3">
-              <button
+               <button
                 onClick={handleAdicionarPaciente}
                 disabled={viagemLotada}
                 className={`w-full font-semibold py-3 rounded-lg shadow-sm border transition-all ${
@@ -383,16 +740,6 @@ export default function DetalhesViagemPage() {
                 Voltar
               </button>
             </div>
-          )}
-
-          {/* BOTÃO VOLTAR - PACIENTE */}
-          {ehPaciente && (
-            <button
-              onClick={() => router.push('/busca')}
-              className="w-full bg-white text-gray-700 font-semibold py-3 rounded-lg shadow-sm border border-gray-300 hover:bg-gray-50 transition-all"
-            >
-              Voltar
-            </button>
           )}
         </div>
 

@@ -1,4 +1,5 @@
 // app/api/adicionar-paciente-viagem/route.js
+// VERSÃO ATUALIZADA COM CAMPOS DE COLETA
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 
@@ -16,7 +17,7 @@ export async function POST(request) {
   try {
     const dados = await request.json();
     
-    // Validações
+    // Validações básicas
     if (!dados.viagem_id || !dados.paciente_id || !dados.motivo) {
       return NextResponse.json(
         { erro: 'Dados obrigatórios não fornecidos' },
@@ -66,11 +67,25 @@ export async function POST(request) {
       );
     }
 
-    // Inserir paciente na viagem
+    // Inserir paciente na viagem COM NOVOS CAMPOS
     const resultado = await client.query(
       `INSERT INTO viagem_pacientes 
-       (viagem_id, paciente_id, medico_id, motivo, horario_consulta, observacoes) 
-       VALUES ($1, $2, $3, $4, $5, $6) 
+       (
+         viagem_id, 
+         paciente_id, 
+         medico_id, 
+         motivo, 
+         horario_consulta, 
+         observacoes,
+         vai_acompanhado,
+         nome_acompanhante,
+         buscar_em_casa,
+         endereco_coleta,
+         parada_coleta_id,
+         horario_coleta,
+         observacoes_coleta
+       ) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
        RETURNING id`,
       [
         dados.viagem_id,
@@ -78,7 +93,15 @@ export async function POST(request) {
         dados.medico_id || null,
         dados.motivo,
         dados.horario_consulta || null,
-        dados.observacoes || null
+        dados.observacoes || null,
+        // NOVOS CAMPOS
+        dados.vai_acompanhado || false,
+        dados.nome_acompanhante || null,
+        dados.buscar_em_casa || false,
+        dados.endereco_coleta || null,
+        dados.parada_coleta_id || null,
+        dados.horario_coleta || null,
+        dados.observacoes_coleta || null
       ]
     );
 
