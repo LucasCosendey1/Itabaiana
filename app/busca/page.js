@@ -353,13 +353,7 @@ export default function BuscaPage() {
           </div>
         )}
 
-        {!pacienteSelecionado && pacientes.length === 0 && !mensagem && !buscando && usuarioLogado?.role !== 'paciente' && (
-          <div className="text-center py-12">
-            <svg className="w-24 h-24 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            <p className="text-gray-500 text-lg mb-2">Digite um nome ou CPF para buscar</p>
-            <p className="text-gray-400 text-sm">Exemplo: "Lucas" ou "010.101.010-10"</p>
-          </div>
-        )}
+
 
         {/* CALENDÁRIO DE VIAGENS - NOVO */}
         {usuarioLogado?.role === 'administrador' && (
