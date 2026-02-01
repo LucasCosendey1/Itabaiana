@@ -1,4 +1,3 @@
-// app/busca/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -130,8 +129,17 @@ export default function BuscaPage() {
   };
 
   const handleVerDetalhes = (viagem) => {
-    // CORREÇÃO: Usar viagem_id (que vem do banco) em vez do código, para garantir match com [id]
-    router.push(`/viagem/${viagem.viagem_id}`);
+    // ✅ CORREÇÃO: Agora usa o CÓDIGO (V008) para padronizar a navegação
+    // Se a API não mandar 'codigo_viagem', tenta 'codigo', senão usa o ID como último recurso
+    const codigoParaLink = viagem.codigo_viagem || viagem.codigo || viagem.viagem_id;
+    
+    if (!codigoParaLink) {
+        console.error("Erro: Código da viagem não encontrado no objeto:", viagem);
+        alert("Erro ao abrir viagem: Código não identificado.");
+        return;
+    }
+
+    router.push(`/viagem/${codigoParaLink}`);
   };
 
   const handleKeyDown = (e) => {
@@ -244,7 +252,7 @@ export default function BuscaPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Cadastrar Ônibus
+                    Cadastrar Veículo
                   </button>
                   <button
                   onClick={() => router.push('/cadastrar-motorista')}
@@ -273,7 +281,7 @@ export default function BuscaPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
-                  Cadastrar Hospital/UBS
+                  Cadastrar Unidades médicas
                 </button>
                 </>
               )}

@@ -44,7 +44,7 @@ export default function CadastrarHospitalPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">
-                  Gestão de Hospitais e UBS
+                  Gestão de Unidade de Saúde
                 </h1>
                 <p className="text-blue-100 text-sm mt-1">
                   Gerencie unidades de saúde e vincule médicos
@@ -53,7 +53,7 @@ export default function CadastrarHospitalPage() {
             </div>
           </div>
 
-          {/* Opção 1: Gerenciar Hospitais/UBS */}
+          {/* Opção 1: Gerenciar Unidades médicas */}
           <div 
             onClick={() => router.push('/gerenciar-hospitais')}
             className="bg-white rounded-lg shadow-sm border-2 border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer p-6"
@@ -67,7 +67,7 @@ export default function CadastrarHospitalPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">
-                    Gerenciar Hospitais/UBS
+                    Gerenciar Unidades de Saúde
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
                     Ver, editar e gerenciar unidades cadastradas
@@ -80,7 +80,7 @@ export default function CadastrarHospitalPage() {
             </div>
           </div>
 
-          {/* Opção 2: Adicionar Novo Hospital/UBS */}
+          {/* Opção 2: Adicionar Unidades médicas */}
           <div 
             onClick={() => router.push('/adicionar-hospital')}
             className="bg-white rounded-lg shadow-sm border-2 border-gray-200 hover:border-green-500 hover:shadow-lg transition-all cursor-pointer p-6"
@@ -94,10 +94,10 @@ export default function CadastrarHospitalPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">
-                    Adicionar Novo Hospital/UBS
+                    Adicionar Novo Unidade de Saúde
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Cadastrar nova unidade de saúde
+                    Cadastrar nova Unidade de Saúde
                   </p>
                 </div>
               </div>
@@ -115,7 +115,7 @@ export default function CadastrarHospitalPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-blue-50 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-blue-600">--</div>
-                <div className="text-xs text-gray-600 mt-1">Hospitais/UBS</div>
+                <div className="text-xs text-gray-600 mt-1">Unidades médicas</div>
               </div>
               <div className="bg-green-50 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-green-600">--</div>

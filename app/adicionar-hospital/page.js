@@ -1,4 +1,3 @@
-// app/adicionar-hospital/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,14 +6,15 @@ import Header from '../components/Header';
 import { verificarAutenticacao } from '../utils/helpers';
 
 /**
- * PÁGINA DE ADICIONAR HOSPITAL/UBS
+ * PÁGINA DE ADICIONAR HOSPITAL/UBS/OUTROS
  * Com sistema de vinculação de médicos
  */
 export default function AdicionarHospitalPage() {
   const router = useRouter();
   
   // Tipo de unidade
-  const [tipoUnidade, setTipoUnidade] = useState('ubs'); // 'ubs' ou 'hospital'
+  const [tipoUnidade, setTipoUnidade] = useState('ubs'); // 'ubs', 'hospital', 'outro'
+  const [nomeOutroTipo, setNomeOutroTipo] = useState(''); // Para quando seleciona 'Outro'
   
   // Dados da unidade
   const [nome, setNome] = useState('');
@@ -25,7 +25,7 @@ export default function AdicionarHospitalPage() {
   const [responsavel, setResponsavel] = useState('');
   const [horarioFuncionamento, setHorarioFuncionamento] = useState('');
   
-  // Campos específicos para Hospital
+  // Campos Adicionais (Agora disponíveis para todos)
   const [cnpj, setCnpj] = useState('');
   const [tipoAtendimento, setTipoAtendimento] = useState('');
   const [especialidades, setEspecialidades] = useState('');
@@ -112,7 +112,6 @@ export default function AdicionarHospitalPage() {
       return;
     }
 
-    // Verificar se médico já está vinculado
     const jaExiste = medicosVinculados.find(m => m.medico_id === medicoSelecionadoId);
     if (jaExiste) {
       setErro('Este médico já está vinculado');
@@ -159,6 +158,11 @@ export default function AdicionarHospitalPage() {
       return false;
     }
 
+    if (tipoUnidade === 'outro' && !nomeOutroTipo.trim()) {
+      setErro('Informe o nome do tipo de unidade (ex: Policlínica)');
+      return false;
+    }
+
     if (tipoUnidade === 'hospital' && !cnpj) {
       setErro('CNPJ é obrigatório para hospitais');
       return false;
@@ -187,8 +191,10 @@ export default function AdicionarHospitalPage() {
     setCadastrando(true);
 
     try {
+      const tipoFinal = tipoUnidade === 'outro' ? nomeOutroTipo : tipoUnidade;
+
       const dados = {
-        tipo: tipoUnidade,
+        tipo: tipoFinal,
         nome: nome,
         endereco: endereco,
         cep: cep,
@@ -196,9 +202,9 @@ export default function AdicionarHospitalPage() {
         email: email || null,
         responsavel: responsavel || null,
         horario_funcionamento: horarioFuncionamento || null,
-        cnpj: tipoUnidade === 'hospital' ? cnpj : null,
-        tipo_atendimento: tipoUnidade === 'hospital' ? tipoAtendimento : null,
-        especialidades: tipoUnidade === 'hospital' ? especialidades : null,
+        cnpj: cnpj || null,
+        tipo_atendimento: tipoAtendimento || null,
+        especialidades: especialidades || null,
         medicos_vinculados: medicosVinculados.map(m => ({
           medico_id: parseInt(m.medico_id),
           atuacao: m.atuacao,
@@ -209,21 +215,19 @@ export default function AdicionarHospitalPage() {
 
       const response = await fetch('/api/cadastrar-hospital', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dados),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setSucesso('Hospital/UBS cadastrado com sucesso!');
+        setSucesso('Unidade cadastrada com sucesso!');
         setTimeout(() => {
           router.push('/cadastrar-hospital');
         }, 2000);
       } else {
-        setErro(data.erro || 'Erro ao cadastrar hospital/UBS');
+        setErro(data.erro || 'Erro ao cadastrar unidade');
       }
     } catch (error) {
       setErro('Erro ao conectar com o servidor');
@@ -233,44 +237,56 @@ export default function AdicionarHospitalPage() {
     }
   };
 
+  const getTextoBotao = () => {
+    if (cadastrando) return 'Cadastrando...';
+    if (tipoUnidade === 'ubs') return '✓ Cadastrar UBS';
+    if (tipoUnidade === 'hospital') return '✓ Cadastrar Hospital';
+    return '✓ Cadastrar Unidade';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header titulo="Adicionar Hospital/UBS" mostrarVoltar voltarPara="/cadastrar-hospital" />
+      <Header titulo="Adicionar Unidade de Saúde" mostrarVoltar voltarPara="/cadastrar-hospital" />
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          {/* Seleção do Tipo */}
+          {/* ✅ SELEÇÃO DO TIPO (AGORA COM BARRA/SELECT) */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Tipo de Unidade
             </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setTipoUnidade('ubs')}
-                className={`py-3 px-4 rounded-lg border text-center transition-all ${
-                  tipoUnidade === 'ubs'
-                    ? 'border-primary bg-primary text-white shadow-sm'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                }`}
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Selecione o Tipo *
+              </label>
+              <select
+                value={tipoUnidade}
+                onChange={(e) => setTipoUnidade(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
               >
-                <div className="font-semibold">UBS</div>
-                <div className="text-xs mt-1 opacity-80">Unidade Básica de Saúde</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTipoUnidade('hospital')}
-                className={`py-3 px-4 rounded-lg border text-center transition-all ${
-                  tipoUnidade === 'hospital'
-                    ? 'border-primary bg-primary text-white shadow-sm'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                }`}
-              >
-                <div className="font-semibold">Hospital</div>
-                <div className="text-xs mt-1 opacity-80">Hospital / Clínica</div>
-              </button>
+                <option value="ubs">UBS (Unidade Básica de Saúde)</option>
+                <option value="hospital">Hospital</option>
+                <option value="outro">Outro (Personalizado)</option>
+              </select>
             </div>
+
+            {/* Input para "Outro" - Só aparece se selecionar Outro */}
+            {tipoUnidade === 'outro' && (
+              <div className="mt-4 animate-fadeIn">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Especifique o Nome do Tipo *
+                </label>
+                <input
+                  type="text"
+                  value={nomeOutroTipo}
+                  onChange={(e) => setNomeOutroTipo(e.target.value)}
+                  placeholder="Ex: Policlínica, Laboratório, Clínica de Olhos"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+            )}
           </div>
 
           {/* Dados Básicos */}
@@ -286,7 +302,7 @@ export default function AdicionarHospitalPage() {
                   Informações Básicas
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Dados da unidade de saúde
+                  Dados de identificação e contato
                 </p>
               </div>
             </div>
@@ -294,7 +310,7 @@ export default function AdicionarHospitalPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome da {tipoUnidade === 'ubs' ? 'UBS' : 'Hospital'} *
+                  Nome da Unidade *
                 </label>
                 <input
                   type="text"
@@ -389,68 +405,66 @@ export default function AdicionarHospitalPage() {
             </div>
           </div>
 
-          {/* Campos específicos para Hospital */}
-          {tipoUnidade === 'hospital' && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Dados do Hospital
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    Informações específicas
-                  </p>
-                </div>
+          {/* Informações Adicionais (Disponível para TODOS os tipos) */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CNPJ *
-                  </label>
-                  <input
-                    type="text"
-                    value={cnpj}
-                    onChange={(e) => setCnpj(formatarCNPJ(e.target.value))}
-                    placeholder="00.000.000/0000-00"
-                    maxLength={18}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Atendimento
-                  </label>
-                  <input
-                    type="text"
-                    value={tipoAtendimento}
-                    onChange={(e) => setTipoAtendimento(e.target.value)}
-                    placeholder="Ex: Emergência, Consultas, Cirurgias"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Especialidades Disponíveis
-                  </label>
-                  <textarea
-                    value={especialidades}
-                    onChange={(e) => setEspecialidades(e.target.value)}
-                    placeholder="Ex: Cardiologia, Ortopedia, Pediatria..."
-                    rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
-                  />
-                </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Informações Adicionais
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Dados complementares da unidade
+                </p>
               </div>
             </div>
-          )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  CNPJ {tipoUnidade === 'hospital' ? '*' : '(Opcional)'}
+                </label>
+                <input
+                  type="text"
+                  value={cnpj}
+                  onChange={(e) => setCnpj(formatarCNPJ(e.target.value))}
+                  placeholder="00.000.000/0000-00"
+                  maxLength={18}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de Atendimento
+                </label>
+                <input
+                  type="text"
+                  value={tipoAtendimento}
+                  onChange={(e) => setTipoAtendimento(e.target.value)}
+                  placeholder="Ex: Emergência, Consultas, Cirurgias, Exames"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Especialidades Disponíveis
+                </label>
+                <textarea
+                  value={especialidades}
+                  onChange={(e) => setEspecialidades(e.target.value)}
+                  placeholder="Ex: Cardiologia, Ortopedia, Pediatria, Clínica Médica..."
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Médicos Vinculados */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -639,7 +653,7 @@ export default function AdicionarHospitalPage() {
                   : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg'
               }`}
             >
-              {cadastrando ? 'Cadastrando...' : `✓ Cadastrar ${tipoUnidade === 'ubs' ? 'UBS' : 'Hospital'}`}
+              {getTextoBotao()}
             </button>
 
             <button

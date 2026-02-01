@@ -125,7 +125,7 @@ export default function GerenciarMedicosPage() {
                     
                     <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600 mt-1">
                       <span className="flex items-center gap-1">
-                         🆔 CRM: <span className="font-medium text-gray-800">{medico.crm || 'N/A'}</span>
+                          CRM: <span className="font-medium text-gray-800">{medico.crm || 'N/A'}</span>
                       </span>
                       <span className="text-gray-300 hidden sm:inline">|</span>
                       <span className="text-primary font-medium bg-blue-50 px-2 py-0.5 rounded">

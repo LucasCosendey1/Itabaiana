@@ -8,7 +8,7 @@ import { verificarAutenticacao } from '../utils/helpers';
 
 /**
  * PÁGINA DE MENU - ÔNIBUS
- * Opções: Gerenciar Ônibus ou Adicionar Novo Ônibus
+ * Opções: Gerenciar Veículo ou Adicionar Novo Veículo
  */
 export default function CadastrarOnibusPage() {
   const router = useRouter();
@@ -29,7 +29,7 @@ export default function CadastrarOnibusPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header titulo="Ônibus" mostrarVoltar voltarPara="/busca" />
+      <Header titulo="Veículo" mostrarVoltar voltarPara="/busca" />
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         
@@ -37,18 +37,18 @@ export default function CadastrarOnibusPage() {
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="text-3xl font-bold text-primary mb-1">--</div>
-            <div className="text-sm text-gray-600">Ônibus Cadastrados</div>
+            <div className="text-sm text-gray-600">Veículo Cadastrados</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="text-3xl font-bold text-green-600 mb-1">--</div>
-            <div className="text-sm text-gray-600">Ônibus Disponíveis</div>
+            <div className="text-sm text-gray-600">Veículo Disponíveis</div>
           </div>
         </div>
 
         {/* Opções */}
         <div className="space-y-4">
           
-          {/* Gerenciar Ônibus */}
+          {/* Gerenciar Veículo */}
           <button
             onClick={() => router.push('/gerenciar-onibus')}
             className="w-full bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-all group"
@@ -62,7 +62,7 @@ export default function CadastrarOnibusPage() {
                 </div>
                 <div className="text-left">
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    Gerenciar Ônibus
+                    Gerenciar Veículo
                   </h3>
                   <p className="text-sm text-gray-600">
                     Ver, editar e gerenciar ônibus cadastrados
@@ -75,7 +75,7 @@ export default function CadastrarOnibusPage() {
             </div>
           </button>
 
-          {/* Adicionar Novo Ônibus */}
+          {/* Adicionar Novo Veículo */}
           <button
             onClick={() => router.push('/adicionar-onibus')}
             className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-md p-6 hover:shadow-lg transition-all group text-white"
@@ -89,10 +89,10 @@ export default function CadastrarOnibusPage() {
                 </div>
                 <div className="text-left">
                   <h3 className="text-lg font-semibold mb-1">
-                    Adicionar Novo Ônibus
+                    Adicionar Novo Veículo
                   </h3>
                   <p className="text-sm text-green-100">
-                    Cadastrar um novo ônibus no sistema
+                    Cadastrar um novo Veículo no sistema
                   </p>
                 </div>
               </div>

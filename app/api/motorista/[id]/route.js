@@ -72,11 +72,20 @@ export async function GET(request, { params }) {
           [id]
         );
         
-        // Formatar para o frontend
+        // ✅ CORREÇÃO AQUI: Normalizar os nomes para o Frontend
         viagens = resViagens.rows.map(v => ({
-            ...v,
+            id: v.viagem_id,           // Frontend espera "id"
+            codigo: v.codigo_viagem,   // Frontend espera "codigo" (Isso resolve o link undefined)
+            data: v.data_viagem,       // Frontend espera "data"
+            horario: v.horario_saida,  // Frontend espera "horario"
+            status: v.status,
+            
+            // Campos compostos
             destino: v.ubs_destino_nome || v.hospital_destino,
-            veiculo: v.veiculo_placa ? `${v.veiculo_placa} (${v.veiculo_modelo})` : 'N/D'
+            veiculo: v.veiculo_placa ? `${v.veiculo_placa} (${v.veiculo_modelo})` : 'N/D',
+            
+            // Mantendo originais caso precise
+            ...v 
         }));
 
     } catch (e) {

@@ -112,7 +112,7 @@ export default function CadastrarOnibusPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setSucesso('Ônibus cadastrado com sucesso!');
+        setSucesso('Veículo cadastrado com sucesso!');
         // Limpar formulário
         setPlaca('');
         setModelo('');
@@ -137,7 +137,7 @@ export default function CadastrarOnibusPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header titulo="Cadastrar Ônibus" mostrarVoltar voltarPara="/busca" />
+      <Header titulo="Cadastrar Veículo" mostrarVoltar voltarPara="/busca" />
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -183,7 +183,7 @@ export default function CadastrarOnibusPage() {
               {/* Modelo */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Modelo do Ônibus *
+                  Modelo do Veículo *
                 </label>
                 <input
                   type="text"
@@ -275,7 +275,7 @@ export default function CadastrarOnibusPage() {
                   : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg'
               }`}
             >
-              {cadastrando ? 'Cadastrando Ônibus...' : '🚌 Cadastrar Ônibus'}
+              {cadastrando ? 'Cadastrando Veículo...' : '🚌 Cadastrar Veículo'}
             </button>
 
             <button
