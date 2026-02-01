@@ -1,4 +1,3 @@
-// app/criar-viagem/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -251,7 +250,7 @@ export default function CriarViagemPage() {
       return;
     }
 
-    // ✅ NOVA VALIDAÇÃO - Nome do destino obrigatório
+    // ✅ VALIDAÇÃO - Nome do destino obrigatório
     if (!nomeParada) {
       setErro('Informe o nome do destino do paciente');
       return;
@@ -348,7 +347,7 @@ export default function CriarViagemPage() {
         hospital_destino: ubsDestinoId === 'outro' ? nomeUbsOutro : null,
         endereco_destino: enderecoUbsDestino || null,
         ubs_destino_id: ubsDestinoId !== 'outro' ? parseInt(ubsDestinoId) : null,
-        data_viagem: dataViagem,
+        data_viagem: dataViagem, // Usando o estado dataViagem
         horario_saida: horarioSaidaConvertido,
         numero_vagas: parseInt(numeroVagas),
         motorista_id: motoristaId || null,
@@ -361,13 +360,14 @@ export default function CriarViagemPage() {
         body: JSON.stringify(dadosViagem),
       });
 
-      const dataViagem = await responseViagem.json();
+      // ✅ CORREÇÃO: Nome diferente para não conflitar com o estado 'dataViagem'
+      const respostaCriacao = await responseViagem.json();
 
       if (!responseViagem.ok) {
-        throw new Error(dataViagem.erro || 'Erro ao criar viagem');
+        throw new Error(respostaCriacao.erro || 'Erro ao criar viagem');
       }
 
-      const viagemId = dataViagem.viagem.id;
+      const viagemId = respostaCriacao.viagem.id;
 
       // 2. Criar paradas únicas (extrair dos pacientes)
       const paradasUnicas = [];
@@ -413,8 +413,8 @@ export default function CriarViagemPage() {
           // Mapear todos os pacientes que usavam essa parada (pelo nome/endereço)
           pacientes.forEach(pac => {
             if (pac.parada_destino && 
-                 pac.parada_destino.nome === parada.nome && 
-                 pac.parada_destino.endereco === parada.endereco) {
+                pac.parada_destino.nome === parada.nome && 
+                pac.parada_destino.endereco === parada.endereco) {
               mapParadasIds[pac.parada_destino.id] = dataParada.parada.id;
             }
           });

@@ -365,9 +365,9 @@
  medicos          |     3
  motoristas       |     2
  onibus           |     4
- pacientes        |     6
- usuarios         |    14
- viagem_pacientes |     4
+ pacientes        |     7
+ usuarios         |    15
+ viagem_pacientes |     5
  viagens          |    15
 (8 linhas)
 
@@ -419,12 +419,12 @@
 
  id | codigo_viagem | data_viagem | horario_saida |               hospital_destino                | numero_vagas |  status  | motorista_id | onibus_id 
 ----+---------------+-------------+---------------+-----------------------------------------------+--------------+----------+--------------+-----------
- 10 | V010          | 2026-03-05  | 06:00:00      | Hospital de Trauma de Campina Grande          |            1 | pendente |            2 |          
+ 10 | V010          | 2026-03-05  | 06:00:00      | Hospital de Trauma de Campina Grande          |            1 | pendente |            2 |         1
   9 | V009          | 2026-03-01  | 04:00:00      | Hospital de Emergência e Trauma - João Pessoa |            1 | pendente |              |          
   8 | V008          | 2026-02-25  | 07:30:00      | Hospital Regional de Campina Grande           |            1 | pendente |            1 |          
  15 | V2026003      | 2026-02-25  | 06:00:00      | Hospital de Trauma Campina Grande             |           18 | pendente |              |          
- 14 | V2026002      | 2026-02-20  | 05:30:00      | Hospital Universitario Joao Pessoa            |           15 | pendente |              |          
   5 | V005          | 2026-02-20  | 03:00:00      | Hospital de Emergência e Trauma - João Pessoa |            1 | pendente |              |          
+ 14 | V2026002      | 2026-02-20  | 05:30:00      | Hospital Universitario Joao Pessoa            |           15 | pendente |            1 |         1
  13 | V2026001      | 2026-02-15  | 07:00:00      | Hospital Regional de Campina Grande           |           20 | pendente |              |          
   4 | V004          | 2026-02-15  | 04:30:00      | Hospital Universitário - João Pessoa          |            1 | pendente |            2 |          
   2 | V002          | 2026-02-10  | 05:30:00      | Hospital de Trauma de Campina Grande          |            1 | pendente |            1 |          
@@ -433,29 +433,29 @@
 
  id | codigo_viagem |          paciente_nome           |                  motivo                   | horario_consulta 
 ----+---------------+----------------------------------+-------------------------------------------+------------------
+  6 | V010          | Lucas Edson da Silva Cosendey    | gagaga                                    | 11:11:00
   3 | V2026002      | Lucas Edson da Silva Cosendey    | Quebrei o nariz e preciso de uma consulta | 16:25:00
   2 | V2026002      | Lucas Testando Cosendey da Silva | Dor no estomago                           | 17:20:00
   5 | V076436       | Lucas Edson da Silva Cosendey    | Testando, campeão                         | 15:00:00
   4 | V076436       | Lucas Testando Cosendey da Silva | Testando1                                 | 15:30:00
-(4 linhas)
+(5 linhas)
 
- codigo_viagem | data_viagem |               hospital_destino                |        motorista        | onibus | total_pacientes | numero_vagas |  status  
----------------+-------------+-----------------------------------------------+-------------------------+--------+-----------------+--------------+----------
- V010          | 2026-03-05  | Hospital de Trauma de Campina Grande          | Pedro Henrique Souza    |        |               0 |            1 | pendente
- V009          | 2026-03-01  | Hospital de Emergência e Trauma - João Pessoa |                         |        |               0 |            1 | pendente
- V008          | 2026-02-25  | Hospital Regional de Campina Grande           | Carlos Eduardo Oliveira |        |               0 |            1 | pendente
- V2026003      | 2026-02-25  | Hospital de Trauma Campina Grande             |                         |        |               0 |           18 | pendente
- V2026002      | 2026-02-20  | Hospital Universitario Joao Pessoa            |                         |        |               2 |           15 | pendente
- V005          | 2026-02-20  | Hospital de Emergência e Trauma - João Pessoa |                         |        |               0 |            1 | pendente
- V2026001      | 2026-02-15  | Hospital Regional de Campina Grande           |                         |        |               0 |           20 | pendente
- V004          | 2026-02-15  | Hospital Universitário - João Pessoa          | Pedro Henrique Souza    |        |               0 |            1 | pendente
- V002          | 2026-02-10  | Hospital de Trauma de Campina Grande          | Carlos Eduardo Oliveira |        |               0 |            1 | pendente
- V007          | 2026-02-08  | Hospital Universitário - João Pessoa          | Pedro Henrique Souza    |        |               0 |            1 | pendente
+ codigo_viagem | data_viagem |               hospital_destino                |        motorista        |  onibus  | total_pacientes | numero_vagas |  status  
+---------------+-------------+-----------------------------------------------+-------------------------+----------+-----------------+--------------+----------
+ V010          | 2026-03-05  | Hospital de Trauma de Campina Grande          | Pedro Henrique Souza    | ABC-1234 |               1 |            1 | pendente
+ V009          | 2026-03-01  | Hospital de Emergência e Trauma - João Pessoa |                         |          |               0 |            1 | pendente
+ V008          | 2026-02-25  | Hospital Regional de Campina Grande           | Carlos Eduardo Oliveira |          |               0 |            1 | pendente
+ V2026003      | 2026-02-25  | Hospital de Trauma Campina Grande             |                         |          |               0 |           18 | pendente
+ V2026002      | 2026-02-20  | Hospital Universitario Joao Pessoa            | Carlos Eduardo Oliveira | ABC-1234 |               2 |           15 | pendente
+ V005          | 2026-02-20  | Hospital de Emergência e Trauma - João Pessoa |                         |          |               0 |            1 | pendente
+ V2026001      | 2026-02-15  | Hospital Regional de Campina Grande           |                         |          |               0 |           20 | pendente
+ V004          | 2026-02-15  | Hospital Universitário - João Pessoa          | Pedro Henrique Souza    |          |               0 |            1 | pendente
+ V002          | 2026-02-10  | Hospital de Trauma de Campina Grande          | Carlos Eduardo Oliveira |          |               0 |            1 | pendente
+ V007          | 2026-02-08  | Hospital Universitário - João Pessoa          | Pedro Henrique Souza    |          |               0 |            1 | pendente
 (10 linhas)
 
  codigo_viagem | data_viagem |               hospital_destino                | numero_vagas |   status   | total_pacientes 
 ---------------+-------------+-----------------------------------------------+--------------+------------+-----------------
- V010          | 2026-03-05  | Hospital de Trauma de Campina Grande          |            1 | pendente   |               0
  V009          | 2026-03-01  | Hospital de Emergência e Trauma - João Pessoa |            1 | pendente   |               0
  V008          | 2026-02-25  | Hospital Regional de Campina Grande           |            1 | pendente   |               0
  V2026003      | 2026-02-25  | Hospital de Trauma Campina Grande             |           18 | pendente   |               0
@@ -466,18 +466,18 @@
  V007          | 2026-02-08  | Hospital Universitário - João Pessoa          |            1 | pendente   |               0
  V001          | 2026-02-05  | Hospital Regional de Campina Grande           |            1 | pendente   |               0
  V006          | 2026-02-03  | Hospital de Trauma de Campina Grande          |            1 | pendente   |               0
- V003          | 2026-01-30  | Hospital Regional de Campina Grande           |            1 | confirmado |               0
  V080672       | 2026-01-30  | bbvg                                          |           45 | pendente   |               0
-(13 linhas)
+ V003          | 2026-01-30  | Hospital Regional de Campina Grande           |            1 | confirmado |               0
+(12 linhas)
 
  codigo_viagem | data_viagem |               hospital_destino                | numero_vagas | total_pacientes | vagas_disponiveis | situacao  
 ---------------+-------------+-----------------------------------------------+--------------+-----------------+-------------------+-----------
- V010          | 2026-03-05  | Hospital de Trauma de Campina Grande          |            1 |               0 |                 1 | COM VAGAS
+ V010          | 2026-03-05  | Hospital de Trauma de Campina Grande          |            1 |               1 |                 0 | LOTADA
  V009          | 2026-03-01  | Hospital de Emergência e Trauma - João Pessoa |            1 |               0 |                 1 | COM VAGAS
  V008          | 2026-02-25  | Hospital Regional de Campina Grande           |            1 |               0 |                 1 | COM VAGAS
  V2026003      | 2026-02-25  | Hospital de Trauma Campina Grande             |           18 |               0 |                18 | COM VAGAS
- V005          | 2026-02-20  | Hospital de Emergência e Trauma - João Pessoa |            1 |               0 |                 1 | COM VAGAS
  V2026002      | 2026-02-20  | Hospital Universitario Joao Pessoa            |           15 |               2 |                13 | COM VAGAS
+ V005          | 2026-02-20  | Hospital de Emergência e Trauma - João Pessoa |            1 |               0 |                 1 | COM VAGAS
  V2026001      | 2026-02-15  | Hospital Regional de Campina Grande           |           20 |               0 |                20 | COM VAGAS
  V004          | 2026-02-15  | Hospital Universitário - João Pessoa          |            1 |               0 |                 1 | COM VAGAS
  V002          | 2026-02-10  | Hospital de Trauma de Campina Grande          |            1 |               0 |                 1 | COM VAGAS
@@ -491,7 +491,7 @@
 
  total_usuarios | total_pacientes | total_administradores | total_medicos | total_motoristas | total_onibus | total_viagens | total_associacoes 
 ----------------+-----------------+-----------------------+---------------+------------------+--------------+---------------+-------------------
-             14 |               6 |                     3 |             3 |                2 |            4 |            15 |                 4
+             15 |               7 |                     3 |             3 |                2 |            4 |            15 |                 5
 (1 linha)
 
    status   | total 
@@ -502,7 +502,7 @@
 
  tipo_usuario  | total | ativos | inativos 
 ---------------+-------+--------+----------
- paciente      |     6 |      6 |        0
+ paciente      |     7 |      7 |        0
  medico        |     3 |      3 |        0
  administrador |     3 |      3 |        0
  motorista     |     2 |      2 |        0
