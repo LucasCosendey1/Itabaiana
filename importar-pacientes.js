@@ -2,8 +2,6 @@
 // SCRIPT DE IMPORTAÇÃO DE PACIENTES
 // Sistema de Transporte SUS - Itabaiana/PB
 // ============================================
-// Importa 24.000 pacientes do Excel para o PostgreSQL
-// ============================================
 
 const { Client } = require('pg');
 const xlsx = require('xlsx');
@@ -14,9 +12,10 @@ require('dotenv').config();
 // ============================================
 // CONFIGURAÇÕES
 // ============================================
-const ARQUIVO_EXCEL = 'C:\\Users\\lukec\\OneDrive\\Área de Trabalho\\analiticoindividual01010001_28012026.xlsx';
-const EMAIL_PADRAO = 'MudeseuGmail@gmail.com';
-const BATCH_SIZE = 100; // Inserir 100 registros por vez
+const ARQUIVO_EXCEL = 'C:\\Users\\lukec\\OneDrive\\Área de Trabalho\\agoravai.xlsx';
+const NOME_PLANILHA = 'ANALITICO';
+const EMAIL_PADRAO = 'paciente@itabaiana.pb.gov.br';
+const BATCH_SIZE = 100;
 const SENHA_SALT_ROUNDS = 10;
 
 // ============================================
@@ -29,7 +28,6 @@ let stats = {
   sem_cpf: 0,
   cpf_duplicado: 0,
   ubs_criadas: 0,
-  agentes_criados: 0,
   erros: []
 };
 
@@ -39,43 +37,31 @@ let stats = {
 
 function formatarCPF(cpf) {
   if (!cpf) return null;
-  // Remove tudo que não é número
   let cpfLimpo = cpf.toString().replace(/\D/g, '');
-  
-  // Preenche com zeros à esquerda se necessário (CPFs podem ter menos de 11 dígitos)
   cpfLimpo = cpfLimpo.padStart(11, '0');
-  
   if (cpfLimpo.length !== 11) return null;
-  
-  // Formata: 000.000.000-00
   return cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 }
 
 function extrairCEP(endereco) {
-  if (!endereco) return '58360-000'; // CEP padrão de Itabaiana
-  
-  // Procurar padrão "Cep: 58360000" ou similar
+  if (!endereco) return '58360-000';
   const match = endereco.match(/Cep:\s*(\d{8})/i);
   if (match) {
     const cep = match[1];
     return `${cep.slice(0, 5)}-${cep.slice(5)}`;
   }
-  
   return '58360-000';
 }
 
 function limparEndereco(endereco) {
-  if (!endereco) return '';
-  // Remove a parte do CEP e bairro que já está no formato, deixa só rua e número
-  return endereco.split('Cep:')[0].trim();
+  if (!endereco) return 'Não informado';
+  return endereco.split('Cep:')[0].trim() || 'Não informado';
 }
 
 function parseData(dataStr) {
   if (!dataStr) return null;
-  
   try {
-    // Formato esperado: "31/07/1987"
-    const partes = dataStr.split('/');
+    const partes = dataStr.toString().split('/');
     if (partes.length === 3) {
       const [dia, mes, ano] = partes;
       return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
@@ -83,40 +69,34 @@ function parseData(dataStr) {
   } catch (e) {
     return null;
   }
-  
   return null;
 }
 
 function parseHora(horaStr) {
   if (!horaStr) return null;
-  
   try {
-    // Formato esperado: "09:31" ou "09:31:00"
-    const partes = horaStr.split(':');
+    const partes = horaStr.toString().split(':');
     if (partes.length >= 2) {
       return `${partes[0].padStart(2, '0')}:${partes[1].padStart(2, '0')}:00`;
     }
   } catch (e) {
     return null;
   }
-  
   return null;
 }
 
 function normalizarSexo(sexo) {
   if (!sexo) return 'Ignorado';
-  
-  const sexoLower = sexo.toLowerCase();
+  const sexoLower = sexo.toString().toLowerCase();
   if (sexoLower.includes('fem') || sexoLower === 'f') return 'Feminino';
   if (sexoLower.includes('masc') || sexoLower === 'm') return 'Masculino';
   if (sexoLower.includes('ind')) return 'Indeterminado';
-  
   return 'Ignorado';
 }
 
 function normalizarTipoSanguineo(tipo) {
   if (!tipo || tipo === 'Não sabe' || tipo === 'Nao sabe') return null;
-  return tipo;
+  return tipo.toString().trim();
 }
 
 function normalizarBoolean(valor) {
@@ -145,31 +125,44 @@ async function conectarBanco() {
 function lerExcel() {
   console.log('📂 Lendo arquivo Excel...');
   console.log(`   Arquivo: ${ARQUIVO_EXCEL}`);
+  console.log(`   Planilha: ${NOME_PLANILHA}`);
   
   if (!fs.existsSync(ARQUIVO_EXCEL)) {
     throw new Error(`Arquivo não encontrado: ${ARQUIVO_EXCEL}`);
   }
   
   const workbook = xlsx.readFile(ARQUIVO_EXCEL);
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
   
-  // Ler dados pulando as 4 primeiras linhas (cabeçalhos e filtros)
+  if (!workbook.SheetNames.includes(NOME_PLANILHA)) {
+    throw new Error(`Planilha "${NOME_PLANILHA}" não encontrada. Planilhas disponíveis: ${workbook.SheetNames.join(', ')}`);
+  }
+  
+  const worksheet = workbook.Sheets[NOME_PLANILHA];
+  
+  // ✅ Cabeçalho na linha 1 (índice 0)
   const dados = xlsx.utils.sheet_to_json(worksheet, { 
-    range: 3, // Pular as 4 primeiras linhas (0, 1, 2, 3)
     defval: null 
-  });
-  
-  // Renomear primeira coluna
-  dados.forEach(row => {
-    if (row['Filtrado Por:\n  | Data Inicial: 01/01/0001 | Data Final: 28/01/2026 | Desfecho: Cadastro/Atualização | Mudou-se: Não | Óbito: Não']) {
-      row['NOME'] = row['Filtrado Por:\n  | Data Inicial: 01/01/0001 | Data Final: 28/01/2026 | Desfecho: Cadastro/Atualização | Mudou-se: Não | Óbito: Não'];
-      delete row['Filtrado Por:\n  | Data Inicial: 01/01/0001 | Data Final: 28/01/2026 | Desfecho: Cadastro/Atualização | Mudou-se: Não | Óbito: Não'];
-    }
   });
   
   console.log(`✅ ${dados.length} linhas lidas do Excel`);
   stats.total_linhas = dados.length;
+  
+  // Debug: mostrar primeiras colunas da primeira linha
+ if (dados.length > 0) {
+  console.log('\n📋 Exemplo da primeira linha:');
+  console.log(`   NOME: ${dados[0].NOME}`);
+  console.log(`   CPF: ${dados[0].CPF}`);
+  console.log(`   UBS: ${dados[0].UBS}`);
+  
+  // ✅ ADICIONAR ESTAS LINHAS PARA DEBUGAR:
+  console.log(`\n🔍 TODAS AS COLUNAS DISPONÍVEIS:`);
+  console.log(Object.keys(dados[0]));
+  console.log(`\n🔍 VALOR DO CARTÃO SUS:`);
+  console.log(dados[0]['CARTÃO SUS']);
+  console.log(dados[0]['CARTAO SUS']);
+  console.log(dados[0]['Cartão SUS']);
+  console.log('\n');
+}
   
   return dados;
 }
@@ -182,7 +175,6 @@ async function obterOuCriarUBS(client, nomeUBS) {
   
   const nomeUBSLimpo = nomeUBS.trim();
   
-  // Verificar se já existe
   const resultado = await client.query(
     'SELECT id FROM ubs WHERE nome = $1',
     [nomeUBSLimpo]
@@ -192,46 +184,15 @@ async function obterOuCriarUBS(client, nomeUBS) {
     return resultado.rows[0].id;
   }
   
-  // Criar nova UBS
   const novaUBS = await client.query(
     `INSERT INTO ubs (nome, tipo, endereco, telefone, cep, ativo) 
      VALUES ($1, $2, $3, $4, $5, $6) 
      RETURNING id`,
-    [nomeUBSLimpo, 'ubsf', 'Itabaiana/PB', '', '58360-000', true]
+    [nomeUBSLimpo, 'ubs', 'Itabaiana/PB', '', '58360-000', true]
   );
   
   stats.ubs_criadas++;
   return novaUBS.rows[0].id;
-}
-
-// ============================================
-// CRIAR/BUSCAR AGENTE COMUNITÁRIO
-// ============================================
-async function obterOuCriarAgente(client, nomeAgente, ubsId) {
-  if (!nomeAgente || nomeAgente.trim() === '' || !ubsId) return null;
-  
-  const nomeAgenteLimpo = nomeAgente.trim();
-  
-  // Verificar se já existe pelo nome
-  const resultado = await client.query(
-    'SELECT id FROM agentes_comunitarios WHERE nome = $1',
-    [nomeAgenteLimpo]
-  );
-  
-  if (resultado.rows.length > 0) {
-    return resultado.rows[0].id;
-  }
-  
-  // Criar novo agente (SEM criar usuário, apenas o registro)
-  const novoAgente = await client.query(
-    `INSERT INTO agentes_comunitarios (nome, ubs_id, ativo, created_at) 
-     VALUES ($1, $2, $3, CURRENT_TIMESTAMP) 
-     RETURNING id`,
-    [nomeAgenteLimpo, ubsId, true]
-  );
-  
-  stats.agentes_criados++;
-  return novoAgente.rows[0].id;
 }
 
 // ============================================
@@ -260,46 +221,46 @@ async function importarPaciente(client, dados) {
     // 2. Obter/Criar UBS
     const ubsId = await obterOuCriarUBS(client, dados.UBS);
     
-    // 3. Obter/Criar Agente Comunitário
-    const agenteId = ubsId ? await obterOuCriarAgente(client, dados.AGENTE, ubsId) : null;
-    
-    // 4. Gerar hash da senha (CPF sem formatação)
+    // 3. Gerar hash da senha (CPF sem formatação)
     const cpfSemFormatacao = cpf.replace(/\D/g, '');
     const senhaHash = await gerarHashSenha(cpfSemFormatacao);
     
-    // 5. Extrair dados
-    const nome = dados.NOME || '';
-    const endereco = limparEndereco(dados['ENDEREÇO'] || '');
-    const cep = extrairCEP(dados['ENDEREÇO'] || '');
+    // 4. Extrair dados do Excel
+    const nome = dados.NOME || 'Não informado';
+    const endereco = limparEndereco(dados['ENDEREÇO']);
+    const cep = extrairCEP(dados['ENDEREÇO']);
     const telefone = dados.TELEFONE || '';
     const dataNascimento = parseData(dados['DATA NASCIMENTO']);
     const sexo = normalizarSexo(dados.SEXO);
     
-    // 6. Inserir USUÁRIO
+    // ✅ GERAR EMAIL ÚNICO BASEADO NO CPF
+    const emailUnico = `paciente.${cpfSemFormatacao}@itabaiana.pb.gov.br`;
+    
+    // 5. Inserir USUÁRIO
     const usuarioResult = await client.query(
       `INSERT INTO usuarios 
         (cpf, nome_completo, email, telefone, senha_hash, endereco, cep, tipo_usuario, ativo, sexo, data_cadastro)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
        RETURNING id`,
-      [cpf, nome, EMAIL_PADRAO, telefone, senhaHash, endereco, cep, 'paciente', true, sexo]
+      [cpf, nome, emailUnico, telefone, senhaHash, endereco, cep, 'paciente', true, sexo]
     );
     
     const usuarioId = usuarioResult.rows[0].id;
     
-    // 7. Extrair dados do paciente
+    // 6. Extrair dados específicos do paciente
     const cartaoSUS = dados['CARTÃO SUS'] ? dados['CARTÃO SUS'].toString() : null;
     const tipoSanguineo = normalizarTipoSanguineo(dados['TIPO SANGUINEO']);
-    const responsavelFamiliar = normalizarBoolean(dados['RESPONSÁVEL FAMILIAR']);
-    const microarea = dados['MICROÁREA'] ? dados['MICROÁREA'].toString() : null;
-    const mudouSe = dados['MUDOU-SE'] === 'SIM';
+    const responsavelFamiliar = normalizarBoolean(dados['RESPONSÁVEL'] || dados.RESPONSÁVEL);
+    const microarea = dados['MICRO ÁREA'] ? dados['MICRO ÁREA'].toString() : null;
+    const mudouSe = normalizarBoolean(dados['MUDOU-SE']);
     const dataObito = dados['DATA DO ÓBITO'] ? parseData(dados['DATA DO ÓBITO']) : null;
     const horaInicio = parseHora(dados['HORA INÍCIO']);
     const horaFim = parseHora(dados['HORA FIM']);
     const podeDoarPara = dados['PODE DOAR PARA'] || null;
     const podeReceberDe = dados['PODE RECEBER DE'] || null;
-    const agenteNome = dados.AGENTE || null;
+    const agenteNome = dados.ACS || dados['AGENTE UBS'] || null;
     
-    // 8. Inserir PACIENTE
+    // 7. Inserir PACIENTE
     await client.query(
       `INSERT INTO pacientes 
         (usuario_id, cartao_sus, nome_pai, nome_mae, data_nascimento, tipo_sanguineo, 
@@ -308,8 +269,8 @@ async function importarPaciente(client, dados) {
          mudou_se, data_obito, hora_cadastro_inicio, hora_cadastro_fim, data_cadastro)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, CURRENT_TIMESTAMP)`,
       [
-        usuarioId, cartaoSUS, null, null, dataNascimento, tipoSanguineo,
-        null, null, ubsId, agenteId, microarea,
+        usuarioId, cartaoSUS, null, 'Não informado', dataNascimento, tipoSanguineo,
+        null, null, ubsId, null, microarea,
         responsavelFamiliar, agenteNome, podeDoarPara, podeReceberDe,
         mudouSe, dataObito, horaInicio, horaFim
       ]
@@ -321,6 +282,12 @@ async function importarPaciente(client, dados) {
   } catch (erro) {
     stats.pacientes_erro++;
     stats.erros.push({ cpf, nome: dados.NOME, erro: erro.message });
+    
+    if (stats.pacientes_erro <= 5) {
+      console.log(`   ❌ ERRO: ${erro.message}`);
+      console.log(`      CPF: ${cpf} | Nome: ${dados.NOME}`);
+    }
+    
     return { sucesso: false, motivo: 'erro_bd', erro: erro.message };
   }
 }
@@ -344,7 +311,6 @@ async function importarEmLotes(client, dadosExcel) {
       await importarPaciente(client, linha);
     }
     
-    // Progresso
     const percentual = ((i + BATCH_SIZE) / dadosExcel.length * 100).toFixed(1);
     console.log(`   ✅ Progresso: ${stats.pacientes_importados} importados | ${stats.sem_cpf} sem CPF | ${stats.cpf_duplicado} duplicados | ${stats.pacientes_erro} erros (${percentual}%)\n`);
   }
@@ -371,7 +337,6 @@ Data: ${new Date().toLocaleString('pt-BR')}
   ⚠️  CPF duplicado (ignorados):     ${stats.cpf_duplicado.toLocaleString('pt-BR')}
   
   🏥 UBS criadas:                   ${stats.ubs_criadas.toLocaleString('pt-BR')}
-  👥 Agentes criados:               ${stats.agentes_criados.toLocaleString('pt-BR')}
 
 📊 TAXA DE SUCESSO:
 ────────────────────────────────────────────────────────────────────────────────
@@ -403,31 +368,21 @@ async function main() {
   let client;
   
   try {
-    // 1. Ler Excel
     const dadosExcel = lerExcel();
     
-    // 2. Conectar ao banco
     console.log('\n🔌 Conectando ao banco de dados...');
     client = await conectarBanco();
     console.log('✅ Conectado ao PostgreSQL!\n');
     
-    // 3. Iniciar transação
-    console.log('🔄 Iniciando transação...\n');
-    await client.query('BEGIN');
+    // ❌ REMOVIDO: await client.query('BEGIN');
     
-    // 4. Importar dados
     await importarEmLotes(client, dadosExcel);
     
-    // 5. Commit
-    console.log('\n💾 Salvando dados no banco (COMMIT)...');
-    await client.query('COMMIT');
-    console.log('✅ Dados salvos com sucesso!\n');
+    // ❌ REMOVIDO: await client.query('COMMIT');
     
-    // 6. Gerar relatório
     const relatorio = gerarRelatorio();
     console.log(relatorio);
     
-    // 7. Salvar relatório em arquivo
     const nomeArquivo = `relatorio_importacao_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
     fs.writeFileSync(nomeArquivo, relatorio);
     console.log(`📄 Relatório salvo em: ${nomeArquivo}\n`);
@@ -436,11 +391,7 @@ async function main() {
     console.error('\n❌ ERRO FATAL:', erro.message);
     console.error(erro.stack);
     
-    if (client) {
-      console.log('\n🔙 Fazendo ROLLBACK...');
-      await client.query('ROLLBACK');
-      console.log('✅ Rollback executado. Nenhum dado foi alterado.\n');
-    }
+    // ❌ REMOVIDO: await client.query('ROLLBACK');
     
     process.exit(1);
     
@@ -456,5 +407,4 @@ async function main() {
   console.log('================================================================================\n');
 }
 
-// Executar
 main();
