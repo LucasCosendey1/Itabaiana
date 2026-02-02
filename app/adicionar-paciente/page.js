@@ -158,7 +158,7 @@ export default function CadastrarPacientePage() {
           nome_mae: nomeMae,
           data_nascimento: dataNascimento,
           ubs_cadastro_id: parseInt(ubsCadastroId),
-          agente_id: agenteId ? parseInt(agenteId) : null,
+          agente_nome: agenteId || null,
           microarea: microarea || null,
           responsavel_familiar: responsavelFamiliar
         }
@@ -406,22 +406,20 @@ export default function CadastrarPacientePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Agente Comunitário de Saúde
-                </label>
-                <select
-                  value={agenteId}
-                  onChange={(e) => setAgenteId(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                >
-                  <option value="">Selecione o ACS (opcional)</option>
-                  {acsList.map((acs) => (
-                    <option key={acs.id} value={acs.id}>
-                      {acs.nome_completo} {acs.ubs_nome ? `- ${acs.ubs_nome}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Agente Comunitário de Saúde
+  </label>
+  <input
+    type="text"
+    value={agenteId}
+    onChange={(e) => setAgenteId(e.target.value)}
+    placeholder="Nome do agente (opcional)"
+    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+  />
+  <p className="text-xs text-gray-500 mt-1">
+    Digite o nome do agente comunitário de saúde
+  </p>
+</div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

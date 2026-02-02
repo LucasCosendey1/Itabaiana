@@ -89,6 +89,11 @@ export default function GerenciarOnibusPage() {
 
   const stats = calcularEstatisticas();
 
+  // --- CORREÇÃO AQUI: Navegação para a rota correta ---
+  const irParaDetalhes = (id) => {
+    router.push(`/onibus/${id}`);
+  };
+
   if (carregando) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -189,7 +194,8 @@ export default function GerenciarOnibusPage() {
             {onibusFiltrados.map((bus) => (
               <div
                 key={bus.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all group"
+                onClick={() => irParaDetalhes(bus.id)} // ADICIONADO: Evento de clique
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all group cursor-pointer" // ADICIONADO: cursor-pointer
               >
                 <div className="flex items-start justify-between">
                   
@@ -239,9 +245,17 @@ export default function GerenciarOnibusPage() {
                     </div>
                   </div>
 
-                  {/* Ações (Editar - Placeholder) */}
+                  {/* Ações (Editar) */}
                   <div className="flex flex-col gap-2">
-                    <button className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation(); // Impede o clique no botão de ativar o clique do card
+                        // Aqui você pode manter a rota de edição como preferir, ex:
+                        router.push(`/editar-onibus/${bus.id}`);
+                      }}
+                      className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors"
+                      title="Editar informações"
+                    >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>

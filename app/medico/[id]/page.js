@@ -1,3 +1,4 @@
+//medico/[id]/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -60,18 +61,17 @@ export default function DetalhesMedicoPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10 print:bg-white print:pb-0">
+    <div className="min-h-screen bg-gray-50 pb-10 print:bg-white print:pb-0 print:pt-0">
       
       {/* ESTILOS DE IMPRESSÃO */}
       <style jsx global>{`
         @media print {
-          @page { margin: 10mm; size: A4; }
-          body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: Arial, sans-serif; color: #000; }
+          @page { margin: 0; size: auto; }
+          body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: Arial, sans-serif; }
+          .print-header-bg { background-color: #2563eb !important; color: white !important; }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
-          .print-bg-blue { background-color: #eff6ff !important; }
-          .print-header-bg { background-color: #2563eb !important; color: white !important; }
-          .print-row:nth-child(even) { background-color: #f9fafb !important; }
+          .break-inside-avoid { page-break-inside: avoid; }
         }
         .print-only { display: none; }
       `}</style>
@@ -86,118 +86,159 @@ export default function DetalhesMedicoPage() {
       <div className="print-only w-full">
         
         {/* Cabeçalho Azul */}
-        <div className="flex flex-col border-b-2 border-blue-900 pb-4 mb-6">
-            <div className="text-center mb-6">
-                <h2 className="text-xs text-blue-600 uppercase tracking-widest mb-1">RELATÓRIO DE ATENDIMENTOS</h2>
-                <h1 className="text-3xl font-black text-blue-900 uppercase">{medico.nome_completo}</h1>
-                <p className="text-lg text-blue-800 mt-1 font-bold uppercase">{medico.especializacao}</p>
-                <p className="text-sm mt-1 text-gray-600">Documento Gerado em: {new Date().toLocaleDateString()}</p>
+        <div className="flex flex-col w-full print-header-bg py-6 px-8 mb-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold text-white uppercase tracking-wide">Relatório do Profissional</h1>
+                    <p className="text-blue-100 text-sm mt-1">Sistema de Gestão de TFD • Município de Itabaiana-PB</p>
+                </div>
+                <div className="text-right text-white/80 text-xs">
+                    <p>Gerado em: {new Date().toLocaleDateString()}</p>
+                    <p>{new Date().toLocaleTimeString()}</p>
+                </div>
+            </div>
+        </div>
+
+        <div className="px-8 pb-8">
+
+            {/* Título Principal (Nome do Médico) */}
+            <div className="mb-6 border-b-2 border-gray-200 pb-4">
+                <h1 className="text-2xl font-black text-black uppercase mb-1">{medico.nome_completo}</h1>
+                <p className="text-gray-600 font-medium uppercase text-sm">
+                   Médico • {medico.especializacao}
+                </p>
             </div>
 
-            {/* Dados Cadastrais e Vínculos */}
-            <div className="grid grid-cols-2 gap-8 border-t border-blue-200 pt-4">
-                <div>
-                    <h3 className="text-xs font-bold text-blue-700 uppercase mb-2 border-b border-blue-100 pb-1">Dados de Contato</h3>
-                    <div className="text-sm space-y-1 text-black">
-                        <div>
-                            <strong>CPF:</strong> {medico.cpf || '-'}
-                            <span className="mx-2 text-gray-400">|</span>
-                            <span className="text-xs text-gray-700"><strong>CRM:</strong> {medico.crm || '-'}</span>
-                        </div>
-                        <p><strong>Telefone:</strong> {medico.telefone || '-'}</p>
-                        <p><strong>Email:</strong> {medico.email || '-'}</p>
+            {/* SEÇÃO 1: DADOS PESSOAIS E CONTATO */}
+            <section className="mb-8">
+                <h3 className="text-xs font-bold text-blue-600 uppercase mb-3 border-b border-blue-200 pb-1">
+                    Dados Cadastrais & Contato
+                </h3>
+                <div className="grid grid-cols-2 gap-6 text-sm">
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">CRM</span>
+                        <strong className="text-gray-900">{medico.crm || '-'}</strong>
+                    </div>
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">CPF</span>
+                        <strong className="text-gray-900">{medico.cpf || '-'}</strong>
+                    </div>
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">Telefone</span>
+                        <strong className="text-gray-900">{medico.telefone || '-'}</strong>
+                    </div>
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">Email</span>
+                        <strong className="text-gray-900">{medico.email || '-'}</strong>
                     </div>
                 </div>
-                <div>
-                    <h3 className="text-xs font-bold text-blue-700 uppercase mb-2 border-b border-blue-100 pb-1">Locais de Atendimento (Vínculos)</h3>
-                    <div className="text-sm space-y-1 text-black">
-                        {vinculos.length > 0 ? (
-                            vinculos.map((v, i) => (
-                                <p key={i}>• {v.hospital_nome || v.ubs_nome} <span className="text-xs text-gray-600">({v.dias_atendimento})</span></p>
-                            ))
-                        ) : (
-                            <p className="italic text-gray-500">Sem vínculos cadastrados.</p>
-                        )}
+            </section>
+
+            {/* SEÇÃO 2: VÍNCULOS (HOSPITAIS/UBS) */}
+            <section className="mb-8 bg-blue-50 border border-blue-100 rounded-lg p-4">
+                 <h3 className="text-xs font-bold text-blue-600 uppercase mb-3 border-b border-blue-200 pb-1">
+                    Locais de Atendimento (Vínculos)
+                </h3>
+                {vinculos.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">Nenhum vínculo cadastrado.</p>
+                ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                        {vinculos.map((v, i) => (
+                            <div key={i} className="text-sm flex justify-between items-center border-b border-blue-100 last:border-0 pb-1 last:pb-0">
+                                <span className="font-bold text-blue-900">{v.hospital_nome || v.ubs_nome}</span>
+                                <span className="text-gray-600 text-xs">{v.atuacao} • {v.dias_atendimento} ({v.horario_atendimento})</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
+
+            {/* SEÇÃO 3: AGENDA FUTURA */}
+            <section className="mb-8 break-inside-avoid">
+                <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 border-b pb-1">
+                    Atendimentos Agendados ({atendimentosAgendados.length})
+                </h3>
+                {atendimentosAgendados.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic border border-dashed p-4 text-center rounded">Não há atendimentos futuros agendados.</p>
+                ) : (
+                    <table className="w-full text-sm text-left border-collapse">
+                        <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                            <tr>
+                                <th className="px-3 py-2 border-b w-24">Data</th>
+                                <th className="px-3 py-2 border-b">Paciente</th>
+                                <th className="px-3 py-2 border-b">Motivo</th>
+                                <th className="px-3 py-2 border-b text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {atendimentosAgendados.map((v) => (
+                                <tr key={v.id || Math.random()}>
+                                    <td className="px-3 py-2 font-medium">{formatarData(v.data_viagem)}</td>
+                                    <td className="px-3 py-2 font-bold text-gray-800">{v.paciente_nome}</td>
+                                    <td className="px-3 py-2 text-gray-600">{v.motivo}</td>
+                                    <td className="px-3 py-2 text-right">
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-blue-600 text-blue-700 uppercase">
+                                            AGENDADO
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </section>
+
+            {/* SEÇÃO 4: HISTÓRICO REALIZADO */}
+            <section className="mb-8 break-inside-avoid">
+                <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 border-b pb-1">
+                    Histórico de Atendimentos Realizados ({atendimentosRealizados.length})
+                </h3>
+                {atendimentosRealizados.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic border border-dashed p-4 text-center rounded">Nenhum histórico anterior encontrado.</p>
+                ) : (
+                    <table className="w-full text-sm text-left border-collapse">
+                        <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                            <tr>
+                                <th className="px-3 py-2 border-b w-24">Data</th>
+                                <th className="px-3 py-2 border-b">Paciente</th>
+                                <th className="px-3 py-2 border-b">Motivo</th>
+                                <th className="px-3 py-2 border-b text-right">Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {atendimentosRealizados.slice(0, 50).map((v) => (
+                                <tr key={v.id || Math.random()}>
+                                    <td className="px-3 py-2 font-medium">{formatarData(v.data_viagem)}</td>
+                                    <td className="px-3 py-2 text-gray-800">{v.paciente_nome}</td>
+                                    <td className="px-3 py-2 text-gray-600">{v.motivo}</td>
+                                    <td className="px-3 py-2 text-right">
+                                        <span className="text-xs font-bold text-green-700 uppercase">
+                                            CONCLUÍDO
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </section>
+
+            {/* RODAPÉ DO PDF */}
+            <div className="mt-16 pt-8 border-t border-black break-inside-avoid">
+                <div className="flex justify-between text-xs text-gray-600">
+                    <div className="text-center w-1/3">
+                        <div className="border-t border-black w-full mb-2"></div>
+                        <p className="uppercase font-bold">Assinatura do Médico</p>
+                        <p>{medico.nome_completo}</p>
+                    </div>
+                    <div className="text-center w-1/3">
+                        <div className="border-t border-black w-full mb-2"></div>
+                        <p className="uppercase font-bold">Gestão TFD</p>
+                        <p>Município de Itabaiana-PB</p>
                     </div>
                 </div>
             </div>
-        </div>
 
-        {/* 1. PRÓXIMOS ATENDIMENTOS (AGENDADOS) */}
-        <div className="mb-8">
-            <h2 className="text-sm font-bold text-blue-800 uppercase border-b-2 border-blue-800 pb-1 mb-2">
-                Próximos Atendimentos / Agendados ({atendimentosAgendados.length})
-            </h2>
-            {atendimentosAgendados.length === 0 ? (
-                <p className="text-xs text-gray-500 italic py-2">Não há atendimentos agendados.</p>
-            ) : (
-                <table className="w-full text-xs text-left">
-                    <thead className="bg-blue-50 text-blue-900 font-bold uppercase">
-                        <tr>
-                            <th className="py-2 px-2 w-24">Data</th>
-                            <th className="py-2 px-2">Paciente</th>
-                            <th className="py-2 px-2">Motivo</th>
-                            <th className="py-2 px-2 w-20 text-right">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {atendimentosAgendados.map(v => (
-                            <tr key={v.id} className="print-row">
-                                <td className="py-2 px-2">{formatarData(v.data_viagem)}</td>
-                                <td className="py-2 px-2 font-bold">{v.paciente_nome}</td>
-                                <td className="py-2 px-2">{v.motivo}</td>
-                                <td className="py-2 px-2 text-right">AGENDADO</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
-        </div>
-
-        {/* 2. HISTÓRICO DE ATENDIMENTOS (REALIZADOS) */}
-        <div>
-            <h2 className="text-sm font-bold text-gray-700 uppercase border-b-2 border-gray-400 pb-1 mb-2">
-                Histórico de Atendimentos Realizados ({atendimentosRealizados.length})
-            </h2>
-            {atendimentosRealizados.length === 0 ? (
-                <p className="text-xs text-gray-500 italic py-2">Nenhum histórico encontrado.</p>
-            ) : (
-                <table className="w-full text-xs text-left">
-                    <thead className="bg-gray-100 text-gray-600 font-bold uppercase">
-                        <tr>
-                            <th className="py-2 px-2 w-24">Data</th>
-                            <th className="py-2 px-2">Paciente</th>
-                            <th className="py-2 px-2">Motivo</th>
-                            <th className="py-2 px-2 w-20 text-right">Situação</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {atendimentosRealizados.map(v => (
-                            <tr key={v.id} className="print-row">
-                                <td className="py-2 px-2">{formatarData(v.data_viagem)}</td>
-                                <td className="py-2 px-2 font-bold">{v.paciente_nome}</td>
-                                <td className="py-2 px-2">{v.motivo}</td>
-                                <td className="py-2 px-2 text-right font-bold text-green-700">CONCLUÍDO</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
-        </div>
-
-        {/* Rodapé Informativo */}
-        <div className="mt-8 p-6 border-t-2 border-blue-200 print-bg-blue rounded-lg break-inside-avoid">
-            <div className="text-right mb-8 text-blue-900">
-                <span className="text-xl font-bold uppercase">TOTAL DE PACIENTES: {viagens.length}</span>
-            </div>
-            <div className="flex justify-between text-xs text-blue-900 px-4">
-                <div className="text-center w-5/12">
-                    <p className="font-bold uppercase tracking-wider">Assinatura do Médico</p>
-                </div>
-                <div className="text-center w-5/12">
-                    <p className="font-bold uppercase tracking-wider">Gestão de TFD</p>
-                </div>
-            </div>
         </div>
       </div>
       {/* FIM DO LAYOUT DE IMPRESSÃO */}
@@ -210,10 +251,10 @@ export default function DetalhesMedicoPage() {
 
         {/* Card Principal */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
-          <div onClick={() => setExpandido(!expandido)} className="bg-gradient-to-r from-primary to-blue-600 text-white p-6 cursor-pointer hover:from-primary-dark hover:to-blue-700 transition-all">
+          <div onClick={() => setExpandido(!expandido)} className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 cursor-pointer hover:from-blue-700 transition-all">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-white font-bold text-2xl border border-white/30">
                   {medico.nome_completo.charAt(0)}
                 </div>
                 <div>
@@ -257,7 +298,7 @@ export default function DetalhesMedicoPage() {
           </div>
         </div>
 
-        {/* ✅ BOTÃO GERAR RELATÓRIO (Agora aqui, acima da tabela) */}
+        {/* ✅ BOTÃO GERAR RELATÓRIO */}
         <div className="mb-6 flex justify-end">
           <button
             onClick={handleGerarRelatorio}
@@ -266,22 +307,22 @@ export default function DetalhesMedicoPage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Imprimir Relatório de Atendimentos
+            Imprimir Relatório do Médico
           </button>
         </div>
 
         {/* Histórico de Pacientes/Viagens vinculadas */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Pacientes Atendidos em Viagens</h2>
+            <h2 className="text-lg font-bold text-gray-900">Pacientes Atendidos</h2>
             <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">{viagens.length} Registros</span>
           </div>
 
           {viagens.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">Nenhuma viagem registrada com este médico responsável.</div>
+            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">Nenhuma viagem registrada.</div>
           ) : (
             <div className="space-y-3">
-              {viagens.map((viagem) => (
+              {viagens.slice(0, 10).map((viagem) => (
                 <div key={viagem.id} className="border border-gray-200 rounded-lg p-4 hover:border-primary transition-colors cursor-pointer" onClick={() => router.push(`/viagem/${viagem.viagem_id}`)}>
                   <div className="flex justify-between items-start">
                     <div>
@@ -293,6 +334,7 @@ export default function DetalhesMedicoPage() {
                   </div>
                 </div>
               ))}
+              {viagens.length > 10 && <p className="text-center text-xs text-gray-500 mt-2">Exibindo os 10 mais recentes...</p>}
             </div>
           )}
         </div>

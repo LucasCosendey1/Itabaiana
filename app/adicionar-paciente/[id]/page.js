@@ -18,10 +18,23 @@ export default function AdicionarPacientePage() {
   const [pacienteSelecionado, setPacienteSelecionado] = useState(null);
   const [buscandoPaciente, setBuscandoPaciente] = useState(false);
   
+  // Informações da Consulta
+  const [viagemInfo, setViagemInfo] = useState(null);
+  const [vagasDisponiveis, setVagasDisponiveis] = useState(0);
   const [motivo, setMotivo] = useState('');
   const [horarioConsulta, setHorarioConsulta] = useState('');
   const [medicoId, setMedicoId] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  
+  // Informações de Acompanhante
+  const [vaiAcompanhado, setVaiAcompanhado] = useState(false);
+  const [nomeAcompanhante, setNomeAcompanhante] = useState('');
+  
+  // Informações de Coleta
+  const [buscarEmCasa, setBuscarEmCasa] = useState(false);
+  const [enderecoColeta, setEnderecoColeta] = useState('');
+  const [horarioColeta, setHorarioColeta] = useState('');
+  const [observacoesColeta, setObservacoesColeta] = useState('');
   
   const [medicos, setMedicos] = useState([]);
   
@@ -30,9 +43,10 @@ export default function AdicionarPacientePage() {
   const [adicionando, setAdicionando] = useState(false);
 
   useEffect(() => {
-    verificarAutenticacao(router);
-    carregarMedicos();
-  }, [router]);
+  verificarAutenticacao(router);
+  carregarMedicos();
+  carregarViagemInfo();
+}, [router, params.id]);
 
   const carregarMedicos = async () => {
     try {
@@ -45,6 +59,23 @@ export default function AdicionarPacientePage() {
       console.error('Erro ao carregar médicos:', error);
     }
   };
+
+  const carregarViagemInfo = async () => {
+  try {
+    const response = await fetch(`/api/viagem-detalhes/${params.id}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.viagem) {
+        setViagemInfo(data.viagem);
+        const totalPacientes = data.pacientes ? data.pacientes.length : 0;
+        const vagas = data.viagem.numero_vagas - totalPacientes;
+        setVagasDisponiveis(vagas);
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao carregar informações da viagem:', error);
+  }
+};
 
   const buscarPaciente = async () => {
     if (!pacienteCpf.trim()) {
@@ -63,6 +94,10 @@ export default function AdicionarPacientePage() {
 
       if (response.ok && data.pacientes && data.pacientes.length > 0) {
         setPacienteSelecionado(data.pacientes[0]);
+        // Pré-preencher endereço de coleta com endereço cadastrado
+        if (data.pacientes[0].endereco) {
+          setEnderecoColeta(data.pacientes[0].endereco);
+        }
       } else {
         setErro('Paciente não encontrado');
       }
@@ -85,93 +120,128 @@ export default function AdicionarPacientePage() {
   };
 
   const validarFormulario = () => {
-    if (!pacienteSelecionado) {
-      setErro('Selecione um paciente válido');
-      return false;
-    }
-
-    if (!motivo) {
-      setErro('Informe o motivo da viagem');
-      return false;
-    }
-
-    if (horarioConsulta) {
-      const regexHorario = /^\d{2}h\d{2}$/;
-      if (!regexHorario.test(horarioConsulta)) {
-        setErro('Horário de consulta deve estar no formato 10h00');
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setErro('');
-  setSucesso('');
-
-  if (!validarFormulario()) {
-    return;
+  if (!pacienteSelecionado) {
+    setErro('Selecione um paciente válido');
+    return false;
   }
 
-  setAdicionando(true);
+  if (!motivo.trim()) {
+    setErro('Informe o motivo da viagem');
+    return false;
+  }
 
-  try {
-    const horarioConsultaConvertido = horarioConsulta ? horarioConsulta.replace('h', ':') : null;
-
-    // Primeiro, buscar o viagem_id baseado no código
-    const viagemResponse = await fetch(`/api/viagem-detalhes/${params.id}`);
-    
-    if (!viagemResponse.ok) {
-      setErro('Erro ao buscar dados da viagem');
-      setAdicionando(false);
-      return;
-    }
-    
-    const viagemData = await viagemResponse.json();
-    
-    if (!viagemData.viagem) {
-      setErro('Viagem não encontrada');
-      setAdicionando(false);
-      return;
-    }
-
-    const dados = {
-      viagem_id: viagemData.viagem.viagem_id, // ✅ Agora viagemData está definido
-      paciente_id: pacienteSelecionado.paciente_id,
-      motivo,
-      horario_consulta: horarioConsultaConvertido,
-      medico_id: medicoId || null,
-      observacoes: observacoes || null
-    };
-
-    const response = await fetch('/api/adicionar-paciente-viagem', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(dados),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      setSucesso('Paciente adicionado com sucesso!');
-      setTimeout(() => {
-        router.push(`/viagem/${params.id}`);
-      }, 1500);
+  // Verificar vagas disponíveis
+  const vagasNecessarias = vaiAcompanhado ? 2 : 1;
+  if (vagasDisponiveis < vagasNecessarias) {
+    if (vaiAcompanhado) {
+      setErro(`Viagem não possui vagas suficientes. São necessárias 2 vagas (paciente + acompanhante), mas há apenas ${vagasDisponiveis} vaga(s) disponível(is).`);
     } else {
-      setErro(data.erro || 'Erro ao adicionar paciente');
+      setErro('Viagem não possui vagas disponíveis');
     }
-  } catch (error) {
-    setErro('Erro ao conectar com o servidor');
-    console.error('Erro completo:', error);
-  } finally {
-    setAdicionando(false);
+    return false;
   }
+
+  if (horarioConsulta) {
+    const regexHorario = /^\d{2}h\d{2}$/;
+    if (!regexHorario.test(horarioConsulta)) {
+      setErro('Horário de consulta deve estar no formato 10h00');
+      return false;
+    }
+  }
+
+  if (horarioColeta) {
+    const regexHorario = /^\d{2}h\d{2}$/;
+    if (!regexHorario.test(horarioColeta)) {
+      setErro('Horário de coleta deve estar no formato 10h00');
+      return false;
+    }
+  }
+
+  if (vaiAcompanhado && !nomeAcompanhante.trim()) {
+    setErro('Informe o nome do acompanhante');
+    return false;
+  }
+
+  if (buscarEmCasa && !enderecoColeta.trim()) {
+    setErro('Informe o endereço de coleta');
+    return false;
+  }
+
+  return true;
 };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErro('');
+    setSucesso('');
+
+    if (!validarFormulario()) {
+      return;
+    }
+
+    setAdicionando(true);
+
+    try {
+      const horarioConsultaConvertido = horarioConsulta ? horarioConsulta.replace('h', ':') : null;
+      const horarioColetaConvertido = horarioColeta ? horarioColeta.replace('h', ':') : null;
+
+      // Buscar viagem_id baseado no código
+      const viagemResponse = await fetch(`/api/viagem-detalhes/${params.id}`);
+      
+      if (!viagemResponse.ok) {
+        setErro('Erro ao buscar dados da viagem');
+        setAdicionando(false);
+        return;
+      }
+      
+      const viagemData = await viagemResponse.json();
+      
+      if (!viagemData.viagem) {
+        setErro('Viagem não encontrada');
+        setAdicionando(false);
+        return;
+      }
+
+      const dados = {
+        viagem_id: viagemData.viagem.viagem_id,
+        paciente_id: pacienteSelecionado.paciente_id,
+        motivo: motivo.trim(),
+        horario_consulta: horarioConsultaConvertido,
+        medico_id: medicoId || null,
+        observacoes: observacoes.trim() || null,
+        vai_acompanhado: vaiAcompanhado,
+        nome_acompanhante: vaiAcompanhado ? nomeAcompanhante.trim() : null,
+        buscar_em_casa: buscarEmCasa,
+        endereco_coleta: buscarEmCasa ? enderecoColeta.trim() : null,
+        horario_coleta: horarioColetaConvertido,
+        observacoes_coleta: observacoesColeta.trim() || null
+      };
+
+      const response = await fetch('/api/adicionar-paciente-viagem', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dados),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSucesso('Paciente adicionado com sucesso!');
+        setTimeout(() => {
+          router.push(`/viagem/${params.id}`);
+        }, 1500);
+      } else {
+        setErro(data.erro || 'Erro ao adicionar paciente');
+      }
+    } catch (error) {
+      setErro('Erro ao conectar com o servidor');
+      console.error('Erro completo:', error);
+    } finally {
+      setAdicionando(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -222,6 +292,11 @@ const handleSubmit = async (e) => {
                       <div className="text-sm text-gray-600">
                         CPF: {pacienteSelecionado.cpf} | SUS: {pacienteSelecionado.cartao_sus}
                       </div>
+                      {pacienteSelecionado.endereco && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Endereço: {pacienteSelecionado.endereco}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -238,7 +313,6 @@ const handleSubmit = async (e) => {
                 </h3>
 
                 <div className="space-y-4">
-                  {/* Motivo */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Motivo da Viagem *
@@ -252,7 +326,6 @@ const handleSubmit = async (e) => {
                     />
                   </div>
 
-                  {/* Horário da Consulta */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Horário da Consulta
@@ -267,7 +340,6 @@ const handleSubmit = async (e) => {
                     />
                   </div>
 
-                  {/* Médico */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Médico Responsável
@@ -286,7 +358,6 @@ const handleSubmit = async (e) => {
                     </select>
                   </div>
 
-                  {/* Observações */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Observações
@@ -299,6 +370,135 @@ const handleSubmit = async (e) => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
                     />
                   </div>
+                </div>
+              </div>
+
+             {/* Informações de Acompanhante */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Acompanhante
+                </h3>
+                {viagemInfo && (
+                  <span className="text-sm font-medium text-gray-600">
+                    Vagas disponíveis: <span className="font-bold text-primary">{vagasDisponiveis}</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    id="vaiAcompanhado"
+                    checked={vaiAcompanhado}
+                    onChange={(e) => setVaiAcompanhado(e.target.checked)}
+                    disabled={vagasDisponiveis < 2}
+                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-2 focus:ring-primary mt-1"
+                  />
+                  <div className="flex-1">
+                    <label 
+                      htmlFor="vaiAcompanhado" 
+                      className={`text-sm font-medium ${vagasDisponiveis < 2 ? 'text-gray-400' : 'text-gray-700'}`}
+                    >
+                      Paciente vai acompanhado (ocupa 2 vagas)
+                    </label>
+                    {vagasDisponiveis < 2 && (
+                      <p className="text-xs text-red-600 mt-1">
+                        Vagas insuficientes. São necessárias 2 vagas para levar acompanhante.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {vaiAcompanhado && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nome do Acompanhante *
+                    </label>
+                    <input
+                      type="text"
+                      value={nomeAcompanhante}
+                      onChange={(e) => setNomeAcompanhante(e.target.value)}
+                      placeholder="Nome completo do acompanhante"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+              {/* Informações de Coleta */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Local de Coleta
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="buscarEmCasa"
+                      checked={buscarEmCasa}
+                      onChange={(e) => setBuscarEmCasa(e.target.checked)}
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-2 focus:ring-primary"
+                    />
+                    <label htmlFor="buscarEmCasa" className="text-sm font-medium text-gray-700">
+                      Buscar paciente em casa
+                    </label>
+                  </div>
+
+                  {buscarEmCasa && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Endereço de Coleta *
+                        </label>
+                        <input
+                          type="text"
+                          value={enderecoColeta}
+                          onChange={(e) => setEnderecoColeta(e.target.value)}
+                          placeholder="Endereço completo para coleta"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Horário de Coleta
+                        </label>
+                        <input
+                          type="text"
+                          value={horarioColeta}
+                          onChange={(e) => setHorarioColeta(formatarHorario(e.target.value))}
+                          placeholder="06h00"
+                          maxLength={5}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Observações sobre Coleta
+                        </label>
+                        <textarea
+                          value={observacoesColeta}
+                          onChange={(e) => setObservacoesColeta(e.target.value)}
+                          placeholder="Ex: Portão vermelho, casa na esquina"
+                          rows={2}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {!buscarEmCasa && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-700">
+                        Paciente será coletado no ponto de encontro padrão da viagem
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </>

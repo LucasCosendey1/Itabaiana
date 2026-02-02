@@ -59,7 +59,6 @@ export default function InfoPacientePage() {
   const nomeResumido = getNomeResumido(paciente.nome_completo);
 
   return (
-    // Adicionei padding-bottom extra (pb-32) para o conteúdo não ficar escondido atrás do botão fixo no mobile
     <div className="min-h-screen bg-gray-50 pb-32 print:bg-white print:pb-0 print:pt-0">
       
       {/* CSS Global para Impressão */}
@@ -96,10 +95,10 @@ export default function InfoPacientePage() {
         {/* CARD PRINCIPAL */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6 print:shadow-none print:border-none">
           
-          {/* Cabeçalho Visual (Gradiente na tela, Simples no PDF) */}
+          {/* Cabeçalho Visual - ALTERADO: Fundo branco na impressão */}
           <div
             onClick={() => setExpandido(!expandido)}
-            className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 cursor-pointer print:bg-white print:text-black print:p-0 print:mb-4 print:border-b-2 print:border-blue-600"
+            className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 cursor-pointer print:bg-none print:bg-white print:text-black print:p-0 print:mb-4 print:border-b-2 print:border-gray-300"
           >
             <div className="flex items-center gap-4">
                 {/* Avatar (Some no PDF) */}
@@ -107,7 +106,7 @@ export default function InfoPacientePage() {
                   {nomeResumido.charAt(0)}
                 </div>
                 <div>
-                  {/* COR DO NOME CORRIGIDA: Preto na impressão (print:text-black) */}
+                  {/* Nome em preto na impressão */}
                   <h1 className="text-2xl font-bold mb-1 print:text-3xl print:text-black print:uppercase">
                     {paciente.nome_completo}
                   </h1>
@@ -304,8 +303,7 @@ export default function InfoPacientePage() {
 
       </main>
 
-      {/* --- MOBILE ACTION BAR (FIXED BOTTOM) --- */}
-      {/* Esta barra fica fixa no rodapé do celular, sempre visível */}
+      {/* MOBILE ACTION BAR (FIXED BOTTOM) */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] no-print z-50">
         <button
           onClick={handleGerarPDF}

@@ -1,3 +1,4 @@
+//viagem/[id]/route.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,7 +9,7 @@ import { verificarAutenticacao, formatarData, formatarHora, formatarStatus } fro
 /**
  * PÁGINA DE DETALHES DA VIAGEM
  * Visual Web: Padrão.
- * Visual Impressão: Texto Preto/Cinza, Títulos Azuis, Rodapé com Fundo Azul Claro.
+ * Visual Impressão: Identidade visual azul alinhada com o relatório diário.
  */
 export default function DetalhesViagemPage() {
   const router = useRouter();
@@ -48,6 +49,241 @@ export default function DetalhesViagemPage() {
 
   const handleImprimirRelatorio = () => {
     window.print();
+  };
+
+  const handleImprimirComprovante = (paciente) => {
+    const dataFormatada = new Date(viagem.data_viagem).toLocaleDateString('pt-BR', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
+
+    const conteudoHTML = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Comprovante de Viagem</title>
+        <style>
+          @page { size: A4; margin: 15mm; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-size: 12px; 
+            color: #1a1a1a; 
+            background: #fff;
+          }
+          
+          .cabecalho { 
+            text-align: center; 
+            padding: 20px; 
+            background: #2563eb;
+            color: white;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .cabecalho h1 { 
+            font-size: 24px; 
+            font-weight: 700; 
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+          .cabecalho p { 
+            font-size: 14px; 
+            opacity: 0.95;
+          }
+          
+          .info-viagem {
+            background: #f8fafc;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+          }
+          .info-linha {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .info-linha:last-child { border-bottom: none; }
+          .info-label {
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            font-size: 11px;
+          }
+          .info-valor {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+          }
+          
+          .dados-paciente {
+            background: white;
+            border: 2px solid #2563eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+          }
+          .dados-paciente h2 {
+            color: #2563eb;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+          }
+          .dado-linha {
+            padding: 8px 0;
+            display: flex;
+            gap: 10px;
+          }
+          
+          .observacoes {
+            background: #fffbeb;
+            border: 2px solid #fbbf24;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 30px;
+          }
+          .observacoes h3 {
+            color: #92400e;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+          }
+          
+          .assinatura {
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            text-align: center;
+          }
+          .linha-assinatura {
+            border-top: 2px solid #000;
+            width: 60%;
+            margin: 40px auto 10px;
+          }
+          .assinatura p {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #475569;
+          }
+          
+          .rodape {
+            margin-top: 40px;
+            padding: 15px;
+            background: #eff6ff;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 10px;
+            color: #1e40af;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="cabecalho">
+          <h1>Comprovante de Viagem</h1>
+          <p>Transporte SUS - Itabaiana/PB</p>
+        </div>
+        
+        <div class="info-viagem">
+          <div class="info-linha">
+            <span class="info-label">Código da Viagem</span>
+            <span class="info-valor">${viagem.codigo_viagem}</span>
+          </div>
+          <div class="info-linha">
+            <span class="info-label">Data</span>
+            <span class="info-valor">${dataFormatada}</span>
+          </div>
+          <div class="info-linha">
+            <span class="info-label">Horário de Saída</span>
+            <span class="info-valor">${formatarHora(viagem.horario_saida)}</span>
+          </div>
+          <div class="info-linha">
+            <span class="info-label">Destino</span>
+            <span class="info-valor">${viagem.ubs_destino_nome || viagem.hospital_destino}</span>
+          </div>
+        </div>
+        
+        <div class="dados-paciente">
+          <h2>Dados do Passageiro</h2>
+          <div class="dado-linha">
+            <span class="info-label">Nome Completo:</span>
+            <span class="info-valor">${paciente.nome_completo}</span>
+          </div>
+          <div class="dado-linha">
+            <span class="info-label">CPF:</span>
+            <span class="info-valor">${paciente.cpf}</span>
+          </div>
+          <div class="dado-linha">
+            <span class="info-label">Cartão SUS:</span>
+            <span class="info-valor">${paciente.cartao_sus || 'N/A'}</span>
+          </div>
+          ${paciente.motivo ? `
+            <div class="dado-linha">
+              <span class="info-label">Motivo da Viagem:</span>
+              <span class="info-valor">${paciente.motivo}</span>
+            </div>
+          ` : ''}
+          ${paciente.horario_consulta ? `
+            <div class="dado-linha">
+              <span class="info-label">Horário da Consulta:</span>
+              <span class="info-valor">${paciente.horario_consulta.substring(0, 5)}</span>
+            </div>
+          ` : ''}
+        </div>
+        
+        ${paciente.observacoes ? `
+          <div class="observacoes">
+            <h3>Observações Importantes</h3>
+            <p>${paciente.observacoes}</p>
+          </div>
+        ` : ''}
+        
+        <div class="assinatura">
+          <div class="linha-assinatura"></div>
+          <p>Assinatura do Passageiro</p>
+        </div>
+        
+        <div class="rodape">
+          <p>Este comprovante é válido apenas para a data e viagem especificadas acima.</p>
+          <p>Emitido em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(conteudoHTML);
+    doc.close();
+
+    iframe.contentWindow.focus();
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 500);
   };
 
   useEffect(() => {
@@ -124,12 +360,6 @@ export default function DetalhesViagemPage() {
       if (res.ok) { carregarViagem(); cancelarEdicao(); } else { alert('Erro ao atualizar'); }
   };
 
-  const removerPacienteViagem = async (pid) => {
-      if (!confirm('Remover paciente?')) return;
-      const res = await fetch(`/api/remover-paciente-viagem`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ viagem_id: viagem.viagem_id, paciente_id: pid }) });
-      if (res.ok) carregarViagem();
-  };
-
   const handleConfirmarViagem = async () => {
       if (!confirm('Confirmar viagem?')) return;
       setConfirmando(true);
@@ -158,8 +388,6 @@ export default function DetalhesViagemPage() {
           body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: Arial, sans-serif; color: #000; }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
-          .print-bg-blue { background-color: #eff6ff !important; } /* Azul 50 */
-          .print-row:nth-child(even) { background-color: #f9fafb !important; }
         }
         .print-only { display: none; }
       `}</style>
@@ -172,123 +400,182 @@ export default function DetalhesViagemPage() {
       {/* =================================================================================
           2. LAYOUT DO RELATÓRIO (ESCONDIDO NA TELA, APARECE SÓ AO IMPRIMIR)
          ================================================================================= */}
-      <div className="print-only w-full">
+      <div className="print-only w-full" style={{ padding: '20px' }}>
         
-        {/* Cabeçalho do Relatório */}
-        <div className="flex flex-col border-b-2 border-blue-800 pb-4 mb-4">
-            <div className="text-center mb-6">
-                <h2 className="text-xs text-gray-500 uppercase tracking-widest mb-1">RELATÓRIO DE VIAGEM PARA</h2>
-                {/* Título em Azul Escuro */}
-                <h1 className="text-3xl font-black text-blue-900 uppercase">
-                    {viagem.hospital_destino || viagem.ubs_destino_nome}
-                </h1>
-                {/* Texto de data em preto/cinza */}
-                <p className="text-lg mt-2 text-gray-800">
-                    Data: <strong>{formatarData(viagem.data_viagem)}</strong> • Saída: <strong>{formatarHora(viagem.horario_saida)}</strong>
-                </p>
-            </div>
-
-            {/* Dados Técnicos (Motorista e Veículo) - Texto Preto/Cinza */}
-            <div className="grid grid-cols-2 gap-8 border-t border-gray-300 pt-4">
-                <div>
-                    <h3 className="text-xs font-bold text-blue-700 uppercase mb-2 border-b border-gray-200 pb-1">Motorista Responsável</h3>
-                    <div className="text-sm space-y-1 text-black">
-                        <p><strong>Nome:</strong> {viagem.motorista_nome || 'Não informado'}</p>
-                        <p><strong>Sexo:</strong> {viagem.motorista_sexo || '-'}</p>
-                        <p><strong>Contato:</strong> {viagem.motorista_telefone || '-'}</p>
-                    </div>
-                </div>
-                <div>
-                    <h3 className="text-xs font-bold text-blue-700 uppercase mb-2 border-b border-gray-200 pb-1">Veículo Utilizado</h3>
-                    <div className="text-sm space-y-1 text-black">
-                        <p><strong>Modelo:</strong> {viagem.veiculo_modelo || '-'}</p>
-                        <p><strong>Placa:</strong> {viagem.veiculo_placa || '-'}</p>
-                        <p><strong>Cor:</strong> {viagem.veiculo_cor || '-'}</p>
-                    </div>
-                </div>
-            </div>
+        <div style={{ textAlign: 'center', padding: '16px', background: '#2563eb', color: 'white', marginBottom: '20px', borderRadius: '8px', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            Relatório de Viagem
+          </h1>
+          <p style={{ fontSize: '13px', opacity: 0.95 }}>
+            Transporte SUS - Itabaiana/PB
+          </p>
         </div>
 
-        {/* Título da Lista */}
-        <div className="flex justify-between items-end border-b border-gray-400 mb-2 pb-1">
-             <h2 className="text-sm font-bold uppercase text-blue-800">Lista de Passageiros</h2>
-             <span className="text-xs font-bold text-gray-600">Total Listado: {pacientes.length}</span>
+        <div style={{ marginBottom: '25px', padding: '16px', background: 'white', border: '2px solid #e0e0e0', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '12px', borderBottom: '2px solid #e0e0e0' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Código da Viagem</div>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b' }}>{viagem.codigo_viagem}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Status</div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: viagem.status === 'confirmado' ? '#16a34a' : '#eab308' }}>
+                {formatarStatus(viagem.status)}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px', marginBottom: '15px' }}>
+            <div>
+              <div style={{ fontSize: '10px', color: '#475569', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>Data da Viagem</div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b' }}>{formatarData(viagem.data_viagem)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '10px', color: '#475569', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>Horário de Saída</div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b' }}>{formatarHora(viagem.horario_saida)}</div>
+            </div>
+          </div>
+
+          <div style={{ paddingTop: '15px', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: '10px', color: '#475569', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>Destino</div>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>
+              {viagem.ubs_destino_nome || viagem.hospital_destino}
+            </div>
+            {(viagem.ubs_destino_endereco || viagem.endereco_destino) && (
+              <div style={{ fontSize: '12px', color: '#64748b' }}>
+                {viagem.ubs_destino_endereco || viagem.endereco_destino}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Lista Detalhada */}
-        <div className="flex flex-col gap-0">
-            {pacientes.map((paciente, index) => (
-                <div key={paciente.paciente_id} className="print-row border-b border-gray-200 py-3 px-2 flex gap-3 text-xs text-black break-inside-avoid">
-                    {/* Índice */}
-                    <div className="w-6 font-bold text-gray-500 pt-1">{index + 1}.</div>
-                    
-                    {/* Dados */}
-                    <div className="flex-1 grid grid-cols-12 gap-x-2 gap-y-1">
-                        
-                        {/* Linha 1: Nome (Preto), Idade, CPF */}
-                        <div className="col-span-8">
-                            <span className="font-bold text-sm uppercase text-black">{paciente.nome_completo}</span>
-                            <span className="ml-2 text-gray-700">
-                                ({paciente.idade ? parseInt(paciente.idade) : '-'} anos) • CPF: {paciente.cpf}
-                            </span>
-                        </div>
-                        <div className="col-span-4 text-right">
-                            {paciente.buscar_em_casa ? (
-                                <span className="bg-black text-white px-1 font-bold text-[10px] rounded-sm">BUSCAR EM CASA</span>
-                            ) : (
-                                <span className="text-[10px] text-gray-500 font-bold">[ ] PONTO DE ENCONTRO</span>
-                            )}
-                        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px', marginBottom: '25px' }}>
+          <div style={{ padding: '16px', background: '#f8fafc', border: '2px solid #e0e0e0', borderRadius: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#2563eb', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px', borderBottom: '2px solid #e0e0e0', paddingBottom: '6px' }}>
+              Motorista Responsável
+            </div>
+            <div style={{ fontSize: '12px', color: '#1e293b', lineHeight: 1.6 }}>
+              <div style={{ marginBottom: '6px' }}>
+                <span style={{ fontWeight: 700 }}>Nome:</span> {viagem.motorista_nome || 'Não informado'}
+              </div>
+              <div style={{ marginBottom: '6px' }}>
+                <span style={{ fontWeight: 700 }}>Contato:</span> {viagem.motorista_telefone || 'N/A'}
+              </div>
+              <div>
+                <span style={{ fontWeight: 700 }}>CNH:</span> {viagem.motorista_cnh || 'N/A'}
+              </div>
+            </div>
+          </div>
 
-                        {/* Linha 2: Endereço (Preto/Cinza) */}
-                        <div className="col-span-12 text-[11px] text-gray-900">
-                            <strong>Endereço:</strong> {paciente.endereco_busca || paciente.endereco_cadastro || 'Endereço não informado'}
-                        </div>
-
-                        {/* Linha 3: Detalhes Importantes (Alergia em Vermelho, resto Preto) */}
-                        <div className="col-span-12 flex gap-4 mt-1 border-t border-gray-200 pt-1 text-black">
-                            <div className="flex-1">
-                                <span className="font-bold text-gray-600">Motivo:</span> {paciente.motivo || '-'}
-                            </div>
-                            <div className="flex-1">
-                                <span className="font-bold text-gray-600">Alergia:</span> {paciente.alergias ? <span className="font-bold border-b border-red-300 text-red-600">{paciente.alergias}</span> : 'Não'}
-                            </div>
-                            <div className="flex-1">
-                                <span className="font-bold text-gray-600">Acompanhante:</span> {paciente.vai_acompanhado ? paciente.acompanhante : 'Não'}
-                            </div>
-                            <div className="flex-1 text-right">
-                                <span className="font-bold text-gray-600">Destino:</span> {paciente.ubs_paciente || 'Padrão'}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            ))}
+          <div style={{ padding: '16px', background: '#f8fafc', border: '2px solid #e0e0e0', borderRadius: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#2563eb', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px', borderBottom: '2px solid #e0e0e0', paddingBottom: '6px' }}>
+              Veículo Utilizado
+            </div>
+            <div style={{ fontSize: '12px', color: '#1e293b', lineHeight: 1.6 }}>
+              <div style={{ marginBottom: '6px' }}>
+                <span style={{ fontWeight: 700 }}>Modelo:</span> {viagem.onibus_modelo || viagem.veiculo_modelo || 'N/A'}
+              </div>
+              <div style={{ marginBottom: '6px' }}>
+                <span style={{ fontWeight: 700 }}>Placa:</span> {viagem.onibus_placa || viagem.veiculo_placa || 'N/A'}
+              </div>
+              <div>
+                <span style={{ fontWeight: 700 }}>Capacidade:</span> {viagem.numero_vagas || viagem.onibus_capacidade || 0} lugares
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* ✅ RODAPÉ DO RELATÓRIO (FUNDO AZUL CLARO AQUI) */}
-        <div className="mt-8 p-6 border-t-2 border-blue-200 print-bg-blue rounded-lg print:break-inside-avoid">
-            <div className="text-right mb-10 text-blue-900">
-                <span className="text-xl font-bold uppercase">Quantidade Total de Passageiros: {pacientes.length}</span>
-            </div>
-            
-            {/* Assinaturas */}
-            <div className="flex justify-between text-xs text-blue-900 px-4 pb-2">
-                <div className="text-center w-5/12">
-                    <div className="border-t-2 border-blue-300 w-full mb-2"></div>
-                    <p className="font-bold uppercase tracking-wider">Assinatura do Motorista</p>
+        <div style={{ marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #2563eb' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 700, textTransform: 'uppercase', color: '#2563eb' }}>
+              Lista de Passageiros
+            </h2>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>
+              Total: {pacientes.length}
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {pacientes.map((paciente, index) => (
+            <div key={paciente.paciente_id} style={{ borderBottom: '1px solid #e2e8f0', padding: '12px 8px', display: 'flex', gap: '12px', fontSize: '11px', color: '#1a1a1a', pageBreakInside: 'avoid' }}>
+              <div style={{ width: '24px', fontWeight: 700, color: '#64748b', paddingTop: '2px' }}>
+                {index + 1}.
+              </div>
+              
+              <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '8px' }}>
+                <div style={{ gridColumn: 'span 8' }}>
+                  <span style={{ fontWeight: 700, fontSize: '13px', textTransform: 'uppercase', color: '#1e293b' }}>
+                    {paciente.nome_completo}
+                  </span>
+                  <span style={{ marginLeft: '8px', color: '#64748b' }}>
+                    CPF: {paciente.cpf}
+                  </span>
                 </div>
-                <div className="text-center w-5/12">
-                    <div className="border-t-2 border-blue-300 w-full mb-2"></div>
-                    <p className="font-bold uppercase tracking-wider">Responsável TFD</p>
+                <div style={{ gridColumn: 'span 4', textAlign: 'right', fontSize: '10px', color: '#64748b' }}>
+                  {paciente.compareceu ? (
+                    <span style={{ background: '#16a34a', color: 'white', padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '9px' }}>
+                      EMBARCADO
+                    </span>
+                  ) : (
+                    <span>[ ] Não embarcado</span>
+                  )}
                 </div>
+
+                <div style={{ gridColumn: 'span 12', fontSize: '11px', color: '#475569' }}>
+                  <span style={{ fontWeight: 700 }}>Cartão SUS:</span> {paciente.cartao_sus || 'N/A'}
+                </div>
+
+                {paciente.motivo && (
+                  <div style={{ gridColumn: 'span 12', fontSize: '11px', color: '#475569', marginTop: '4px' }}>
+                    <span style={{ fontWeight: 700 }}>Motivo:</span> {paciente.motivo}
+                  </div>
+                )}
+
+                {paciente.horario_consulta && (
+                  <div style={{ gridColumn: 'span 6', fontSize: '11px', color: '#475569' }}>
+                    <span style={{ fontWeight: 700 }}>Horário Consulta:</span> {paciente.horario_consulta.substring(0, 5)}
+                  </div>
+                )}
+
+                {paciente.paciente_ubs_nome && (
+                  <div style={{ gridColumn: 'span 6', fontSize: '11px', color: '#475569' }}>
+                    <span style={{ fontWeight: 700 }}>UBS:</span> {paciente.paciente_ubs_nome}
+                  </div>
+                )}
+              </div>
             </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: '30px', padding: '20px', borderTop: '2px solid #e0e0e0', background: '#eff6ff', borderRadius: '8px', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+          <div style={{ textAlign: 'right', marginBottom: '40px', color: '#1e40af' }}>
+            <span style={{ fontSize: '18px', fontWeight: 700, textTransform: 'uppercase' }}>
+              Total de Passageiros: {pacientes.length}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1e40af', padding: '0 20px' }}>
+            <div style={{ textAlign: 'center', width: '45%' }}>
+              <div style={{ borderTop: '2px solid #2563eb', width: '100%', marginBottom: '8px' }}></div>
+              <p style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Assinatura do Motorista
+              </p>
+            </div>
+            <div style={{ textAlign: 'center', width: '45%' }}>
+              <div style={{ borderTop: '2px solid #2563eb', width: '100%', marginBottom: '8px' }}></div>
+              <p style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Responsável TFD
+              </p>
+            </div>
+          </div>
         </div>
       </div>
       {/* FIM DO LAYOUT DE IMPRESSÃO */}
 
 
       {/* =================================================================================
-          3. LAYOUT DE TELA (O ORIGINAL QUE VOCÊ NÃO QUER MUDAR)
+          3. LAYOUT DE TELA (O ORIGINAL)
          ================================================================================= */}
       <main className="container mx-auto px-4 py-6 max-w-2xl no-print">
         
@@ -415,9 +702,18 @@ export default function DetalhesViagemPage() {
                       {paciente.compareceu ? (<svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>) : (<svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>)}
                     </div>
                   </div>
-                  {ehAdministrador && (
-                    <button onClick={(e) => { e.stopPropagation(); removerPacienteViagem(paciente.paciente_id); }} className="mt-3 text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Remover</button>
-                  )}
+                  <button 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      handleImprimirComprovante(paciente); 
+                    }} 
+                    className="mt-3 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Imprimir Comprovante
+                  </button>
                 </div>
               ))}
             </div>

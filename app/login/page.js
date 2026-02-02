@@ -141,26 +141,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Botão de Cadastro */}
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  Não tem uma conta?
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={() => router.push('/cadastro')}
-              type="button"
-              className="mt-4 w-full py-3 rounded-lg font-medium transition-all bg-white text-primary border-2 border-primary hover:bg-blue-50"
-            >
-              Criar Nova Conta
-            </button>
-          </div>
+
 
           {/* Credenciais de teste */}
           <div className="mt-8 pt-6 border-t border-gray-200">

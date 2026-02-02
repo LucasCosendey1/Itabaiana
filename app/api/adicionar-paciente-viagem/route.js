@@ -1,5 +1,4 @@
 // app/api/adicionar-paciente-viagem/route.js
-// VERSÃO ATUALIZADA COM CAMPOS DE COLETA
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 
@@ -27,14 +26,9 @@ export async function POST(request) {
 
     client = await conectarBanco();
 
-    // Verificar se viagem existe e tem vagas disponíveis
+    // Verificar se viagem existe
     const viagemResult = await client.query(
-      `SELECT 
-        v.id,
-        v.numero_vagas,
-        (SELECT COUNT(*) FROM viagem_pacientes WHERE viagem_id = v.id) as total_pacientes
-      FROM viagens v
-      WHERE v.id = $1`,
+      `SELECT id FROM viagens WHERE id = $1`,
       [dados.viagem_id]
     );
 
@@ -42,15 +36,6 @@ export async function POST(request) {
       return NextResponse.json(
         { erro: 'Viagem não encontrada' },
         { status: 404 }
-      );
-    }
-
-    const viagem = viagemResult.rows[0];
-    
-    if (viagem.total_pacientes >= viagem.numero_vagas) {
-      return NextResponse.json(
-        { erro: 'Viagem está lotada' },
-        { status: 400 }
       );
     }
 
@@ -67,7 +52,32 @@ export async function POST(request) {
       );
     }
 
-    // Inserir paciente na viagem COM NOVOS CAMPOS
+    // Verificar vagas disponíveis (ÚNICA VERIFICAÇÃO CORRETA)
+    const resultadoVagas = await client.query(
+      `SELECT 
+        v.numero_vagas,
+        COALESCE(COUNT(vp.id), 0) as total_pacientes
+       FROM viagens v
+       LEFT JOIN viagem_pacientes vp ON v.id = vp.viagem_id
+       WHERE v.id = $1
+       GROUP BY v.numero_vagas`,
+      [dados.viagem_id]
+    );
+
+    if (resultadoVagas.rows.length > 0) {
+      const { numero_vagas, total_pacientes } = resultadoVagas.rows[0];
+      const vagasNecessarias = dados.vai_acompanhado ? 2 : 1;
+      const vagasDisponiveis = numero_vagas - parseInt(total_pacientes);
+      
+      if (vagasDisponiveis < vagasNecessarias) {
+        return NextResponse.json(
+          { erro: `Viagem não possui vagas suficientes. Necessário: ${vagasNecessarias}, Disponível: ${vagasDisponiveis}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Inserir paciente na viagem
     const resultado = await client.query(
       `INSERT INTO viagem_pacientes 
        (
@@ -94,7 +104,6 @@ export async function POST(request) {
         dados.motivo,
         dados.horario_consulta || null,
         dados.observacoes || null,
-        // NOVOS CAMPOS
         dados.vai_acompanhado || false,
         dados.nome_acompanhante || null,
         dados.buscar_em_casa || false,

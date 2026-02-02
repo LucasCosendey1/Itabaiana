@@ -47,6 +47,7 @@ export default function CriarViagemPage() {
   const [enderecoColeta, setEnderecoColeta] = useState('');
   const [horarioColeta, setHorarioColeta] = useState('');
   const [observacoesColeta, setObservacoesColeta] = useState('');
+  const [vagasOcupadas, setVagasOcupadas] = useState(0);
 
   // CAMPOS DE DESTINO DO PACIENTE (Antiga Etapa 2 integrada)
   const [nomeParada, setNomeParada] = useState('');
@@ -78,8 +79,16 @@ export default function CriarViagemPage() {
       }
     }
     
+    
     carregarDados();
   }, [router]);
+
+  useEffect(() => {
+    const total = pacientes.reduce((acc, pac) => {
+      return acc + (pac.vai_acompanhado ? 2 : 1);
+    }, 0);
+    setVagasOcupadas(total);
+  }, [pacientes]);
 
   const carregarDados = async () => {
     try {
@@ -153,7 +162,7 @@ export default function CriarViagemPage() {
     }
 
     if (!ubsDestinoId) {
-      setErro('Selecione a UBS de destino ou informe "Outro"');
+      setErro('Selecione a cidade de destino');
       return false;
     }
 
@@ -239,69 +248,76 @@ export default function CriarViagemPage() {
     setNomeParada(''); 
   };
 
-  const adicionarPacienteAViagem = () => {
-    if (!pacienteSelecionado) {
-      setErro('Selecione um paciente');
-      return;
-    }
 
-    if (!motivoPaciente) {
-      setErro('Informe o motivo da viagem');
-      return;
-    }
+const adicionarPacienteAViagem = () => {
+  if (!pacienteSelecionado) {
+    setErro('Selecione um paciente');
+    return;
+  }
 
-    // ✅ VALIDAÇÃO - Nome do destino obrigatório
-    if (!nomeParada) {
-      setErro('Informe o nome do destino do paciente');
-      return;
-    }
+  if (!motivoPaciente) {
+    setErro('Informe o motivo da viagem');
+    return;
+  }
 
-    if (vaiAcompanhado && !nomeAcompanhante) {
-      setErro('Informe o nome do acompanhante');
-      return;
-    }
+  if (!nomeParada) {
+    setErro('Informe o nome do destino do paciente');
+    return;
+  }
 
-    // Criar parada temporária para este paciente
-    const paradaTemp = {
-      id: Date.now() + Math.random(), // ID único temporário
-      ordem: pacientes.length + 1,
-      nome: nomeParada,
-      endereco: enderecoParada,
-      horario: horarioParada,
-      observacoes: observacoesParada
-    };
+  if (vaiAcompanhado && !nomeAcompanhante) {
+    setErro('Informe o nome do acompanhante');
+    return;
+  }
 
-    const novoPaciente = {
-      id: Date.now(), // ID temporário do paciente na lista
-      paciente_id: pacienteSelecionado.paciente_id,
-      cpf: pacienteSelecionado.cpf,
-      nome: pacienteSelecionado.nome_completo,
-      telefone: pacienteSelecionado.telefone,
-      endereco_cadastro: pacienteSelecionado.endereco,
-      motivo: motivoPaciente,
-      horario_consulta: horarioConsulta,
-      medico_id: medicoId || null,
-      vai_acompanhado: vaiAcompanhado,
-      nome_acompanhante: vaiAcompanhado ? nomeAcompanhante : null,
-      buscar_em_casa: buscarEmCasa,
-      endereco_coleta: enderecoColeta || null,
-      // ✅ Vincular a parada/destino
-      parada_coleta_id: paradaTemp.id,
-      parada_destino: paradaTemp, // Guardar objeto completo para usar depois
-      horario_coleta: horarioColeta || null,
-      observacoes_coleta: observacoesColeta || null
-    };
+  // ✅ VALIDAÇÃO DE VAGAS - Considera acompanhante
+  const vagasNecessarias = vaiAcompanhado ? 2 : 1;
+  const vagasRestantes = parseInt(numeroVagas) - vagasOcupadas;
+  
+  if (vagasRestantes < vagasNecessarias) {
+    setErro(`Vagas insuficientes. Necessário: ${vagasNecessarias} vaga(s), disponível: ${vagasRestantes} vaga(s).`);
+    return;
+  }
 
-    setPacientes([...pacientes, novoPaciente]);
-    
-    // Limpar formulários
-    limparFormPaciente();
-    limparFormParada(); 
-    
-    setMostrarFormPaciente(false);
-    setPacienteSelecionado(null);
-    setErro('');
+  // Criar parada temporária para este paciente
+  const paradaTemp = {
+    id: Date.now() + Math.random(),
+    ordem: pacientes.length + 1,
+    nome: nomeParada,
+    endereco: enderecoParada,
+    horario: horarioParada,
+    observacoes: observacoesParada
   };
+
+  const novoPaciente = {
+    id: Date.now(),
+    paciente_id: pacienteSelecionado.paciente_id,
+    cpf: pacienteSelecionado.cpf,
+    nome: pacienteSelecionado.nome_completo,
+    telefone: pacienteSelecionado.telefone,
+    endereco_cadastro: pacienteSelecionado.endereco,
+    motivo: motivoPaciente,
+    horario_consulta: horarioConsulta,
+    medico_id: medicoId || null,
+    vai_acompanhado: vaiAcompanhado,
+    nome_acompanhante: vaiAcompanhado ? nomeAcompanhante : null,
+    buscar_em_casa: buscarEmCasa,
+    endereco_coleta: enderecoColeta || null,
+    parada_coleta_id: paradaTemp.id,
+    parada_destino: paradaTemp,
+    horario_coleta: horarioColeta || null,
+    observacoes_coleta: observacoesColeta || null
+  };
+
+  setPacientes([...pacientes, novoPaciente]);
+  
+  limparFormPaciente();
+  limparFormParada();
+  
+  setMostrarFormPaciente(false);
+  setPacienteSelecionado(null);
+  setErro('');
+};
 
   const removerPaciente = (id) => {
     setPacientes(pacientes.filter(p => p.id !== id));
@@ -344,10 +360,11 @@ export default function CriarViagemPage() {
       const horarioSaidaConvertido = horarioSaida.replace('h', ':');
       
       const dadosViagem = {
-        hospital_destino: ubsDestinoId === 'outro' ? nomeUbsOutro : null,
+        // ✅ Se for cidade pré-definida, usa o valor do select. Se for "outro", usa o digitado
+        hospital_destino: ubsDestinoId === 'outro' ? nomeUbsOutro : ubsDestinoId,
         endereco_destino: enderecoUbsDestino || null,
-        ubs_destino_id: ubsDestinoId !== 'outro' ? parseInt(ubsDestinoId) : null,
-        data_viagem: dataViagem, // Usando o estado dataViagem
+        ubs_destino_id: null, // ✅ Sempre null agora, pois não é mais UBS
+        data_viagem: dataViagem,
         horario_saida: horarioSaidaConvertido,
         numero_vagas: parseInt(numeroVagas),
         motorista_id: motoristaId || null,
@@ -498,65 +515,70 @@ export default function CriarViagemPage() {
         {etapaAtual === 1 && (
           <div className="space-y-6">
             
-            {/* UBS de Destino */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">
-                UBS de Destino
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-2">
-                    Selecione a UBS *
-                  </label>
-                  <select
-                    value={ubsDestinoId}
-                    onChange={(e) => {
-                      setUbsDestinoId(e.target.value);
-                      if (e.target.value !== 'outro') {
-                        setNomeUbsOutro('');
-                      }
-                    }}
-                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                  >
-                    <option value="">Selecione...</option>
-                    {ubsList.map((ubs) => (
-                      <option key={ubs.id} value={ubs.id}>
-                        {ubs.nome}
-                      </option>
-                    ))}
-                    <option value="outro">Outro (informar manualmente)</option>
-                  </select>
-                </div>
+            {/* Destino da Viagem */}
+<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+  <h3 className="text-sm font-semibold text-gray-700 mb-4">
+    Destino da Viagem
+  </h3>
+  <div className="space-y-4">
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-2">
+        Selecione a Cidade *
+      </label>
+      <select
+        value={ubsDestinoId}
+        onChange={(e) => {
+          setUbsDestinoId(e.target.value);
+          if (e.target.value !== 'outro') {
+            setNomeUbsOutro('');
+          }
+        }}
+        className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+      >
+        <option value="">Selecione...</option>
+        <option value="João Pessoa">João Pessoa</option>
+        <option value="Mamanguape">Mamanguape</option>
+        <option value="Campina Grande">Campina Grande</option>
+        <option value="Guarabira">Guarabira</option>
+        <option value="Patos">Patos</option>
+        <option value="Cajazeiras">Cajazeiras</option>
+        <option value="Sousa">Sousa</option>
+        <option value="outro">Outro (informar manualmente)</option>
+      </select>
+    </div>
 
-                {ubsDestinoId === 'outro' && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-2">
-                      Nome do Local *
-                    </label>
-                    <input
-                      type="text"
-                      value={nomeUbsOutro}
-                      onChange={(e) => setNomeUbsOutro(e.target.value)}
-                      placeholder="Ex: Hospital Regional, Clínica Particular..."
-                      className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                    />
-                  </div>
-                )}
+    {ubsDestinoId === 'outro' && (
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-2">
+          Nome da Cidade *
+        </label>
+        <input
+          type="text"
+          value={nomeUbsOutro}
+          onChange={(e) => setNomeUbsOutro(e.target.value)}
+          placeholder="Ex: Monteiro, Princesa Isabel..."
+          className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+        />
+      </div>
+    )}
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-2">
-                    Endereço do Local {ubsDestinoId === 'outro' ? '*' : '(Opcional)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={enderecoUbsDestino}
-                    onChange={(e) => setEnderecoUbsDestino(e.target.value)}
-                    placeholder="Endereço completo"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                  />
-                </div>
-              </div>
-            </div>
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-2">
+        Endereço do local de partida (Opcional)
+      </label>
+      <input
+        type="text"
+        value={enderecoUbsDestino}
+        onChange={(e) => setEnderecoUbsDestino(e.target.value)}
+        placeholder="Ex: Hospital Regional, UBS Central, Clínica..."
+        className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+      />
+      <p className="text-xs text-gray-500 mt-1">
+        Opcional: Informe o local específico dentro da cidade
+      </p>
+    </div>
+  </div>
+</div>
 
             {/* Data e Horário */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
@@ -685,7 +707,7 @@ export default function CriarViagemPage() {
             {pacientes.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-700">
-                  Pacientes Cadastrados ({pacientes.length}/{numeroVagas})
+                  Pacientes Cadastrados ({pacientes.length} pessoa{pacientes.length !== 1 ? 's' : ''} • {vagasOcupadas}/{numeroVagas} vagas)
                 </h3>
                 
                 {pacientes.map((pac) => {
@@ -722,10 +744,10 @@ export default function CriarViagemPage() {
                             </div>
                           )}
                           
-                          {/* Acompanhante */}
+                          {/* Acompanhante - CORREÇÃO VISUAL AQUI */}
                           {pac.vai_acompanhado && (
-                            <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
-                              👥 {pac.nome_acompanhante}
+                            <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                              👥 {pac.nome_acompanhante} (2 vagas)
                             </div>
                           )}
                           
@@ -936,17 +958,35 @@ export default function CriarViagemPage() {
 
                 {/* Acompanhante */}
                 <div className="border-t border-gray-200 pt-4">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-start gap-2 mb-3">
                     <input
                       type="checkbox"
                       id="vaiAcompanhado"
                       checked={vaiAcompanhado}
                       onChange={(e) => setVaiAcompanhado(e.target.checked)}
-                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-2 focus:ring-primary"
+                      disabled={parseInt(numeroVagas) - vagasOcupadas < 2}
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-2 focus:ring-primary mt-1"
                     />
-                    <label htmlFor="vaiAcompanhado" className="text-sm font-medium text-gray-700">
-                      Vai acompanhado
-                    </label>
+                    <div className="flex-1">
+                      <label 
+                        htmlFor="vaiAcompanhado" 
+                        className={`text-sm font-medium ${
+                          parseInt(numeroVagas) - vagasOcupadas < 2 ? 'text-gray-400' : 'text-gray-700'
+                        }`}
+                      >
+                        Vai acompanhado (ocupa 2 vagas)
+                      </label>
+                      {parseInt(numeroVagas) - vagasOcupadas < 2 && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Vagas insuficientes. São necessárias 2 vagas para levar acompanhante.
+                        </p>
+                      )}
+                      {parseInt(numeroVagas) - vagasOcupadas >= 2 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Vagas restantes: {parseInt(numeroVagas) - vagasOcupadas}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {vaiAcompanhado && (

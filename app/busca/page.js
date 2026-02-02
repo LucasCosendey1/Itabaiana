@@ -36,8 +36,14 @@ export default function BuscaPage() {
             usuario.role = usuario.role.toLowerCase();
           }
           setUsuarioLogado(usuario);
+          
+          // ✅ CARREGAR VIAGENS AUTOMATICAMENTE PARA CADA TIPO DE USUÁRIO
           if (usuario.role === 'paciente') {
-            buscarMinhasViagens(usuario.cpf);
+            buscarViagensUsuario(usuario.cpf, 'paciente');
+          } else if (usuario.role === 'motorista') {
+            buscarViagensUsuario(usuario.cpf, 'motorista');
+          } else if (usuario.role === 'medico') {
+            buscarViagensUsuario(usuario.cpf, 'medico');
           }
         } catch (e) {
           console.error("Erro ao ler dados do usuário", e);
@@ -46,20 +52,45 @@ export default function BuscaPage() {
     }
   }, [router]);
 
-  const buscarMinhasViagens = async (cpf) => {
+  // ✅ FUNÇÃO UNIVERSAL PARA BUSCAR VIAGENS (PACIENTE, MOTORISTA OU MÉDICO)
+  const buscarViagensUsuario = async (cpf, tipoUsuario) => {
     setBuscando(true);
     setMensagem('');
     try {
       const cpfLimpo = cpf.replace(/\D/g, '');
-      const response = await fetch(`/api/paciente/${cpfLimpo}`);
+      let endpoint = '';
+      
+      // Define o endpoint correto baseado no tipo de usuário
+      if (tipoUsuario === 'paciente') {
+        endpoint = `/api/paciente/${cpfLimpo}`;
+      } else if (tipoUsuario === 'motorista') {
+        endpoint = `/api/motorista/${cpfLimpo}/viagens`;
+      } else if (tipoUsuario === 'medico') {
+        endpoint = `/api/medico/${cpfLimpo}/viagens`;
+      }
+      
+      const response = await fetch(endpoint);
       const data = await response.json();
 
-      if (response.ok && data.paciente) {
-        const paciente = data.paciente;
-        setPacienteSelecionado(paciente);
-        setViagens(paciente.viagens || []);
-        if (!paciente.viagens || paciente.viagens.length === 0) {
-          setMensagem('Você não possui viagens cadastradas.');
+      if (response.ok) {
+        if (tipoUsuario === 'paciente' && data.paciente) {
+          setPacienteSelecionado(data.paciente);
+          setViagens(data.paciente.viagens || []);
+          if (!data.paciente.viagens || data.paciente.viagens.length === 0) {
+            setMensagem('Você não possui viagens cadastradas.');
+          }
+        } else if (tipoUsuario === 'motorista' && data.viagens) {
+          setViagens(data.viagens || []);
+          if (data.viagens.length === 0) {
+            setMensagem('Você não possui viagens atribuídas.');
+          }
+        } else if (tipoUsuario === 'medico' && data.viagens) {
+          setViagens(data.viagens || []);
+          if (data.viagens.length === 0) {
+            setMensagem('Você não possui consultas agendadas.');
+          }
+        } else {
+          setMensagem('Não foi possível carregar suas viagens.');
         }
       } else {
         setMensagem(data.erro || 'Não foi possível carregar suas viagens.');
@@ -78,7 +109,6 @@ export default function BuscaPage() {
     setViagens([]);
 
     if (!busca.trim()) {
-      // Mensagem mais discreta ou nenhuma mensagem se preferir
       return; 
     }
 
@@ -147,15 +177,61 @@ export default function BuscaPage() {
     setDataSelecionada(null);
   };
 
+  // ✅ FUNÇÃO PARA REDIRECIONAR PARA O PERFIL CORRETO
+  const irParaPerfil = () => {
+  if (!usuarioLogado) return;
+  
+  if (usuarioLogado.role === 'paciente') {
+    const cpfLimpo = usuarioLogado.cpf.replace(/\D/g, '');
+    router.push(`/paciente/${cpfLimpo}`);
+  } else if (usuarioLogado.role === 'motorista') {
+    // ✅ Vai pelo ID em vez de CPF (porque a página espera ID)
+    // O ID do motorista deve estar no token do usuário
+    const motoristaId = usuarioLogado.motorista_id || usuarioLogado.id;
+    router.push(`/motorista/${motoristaId}`);
+  } else if (usuarioLogado.role === 'medico') {
+    const medicoId = usuarioLogado.medico_id || usuarioLogado.id;
+    router.push(`/medico/${medicoId}`);
+  } else if (usuarioLogado.role === 'administrador') {
+    const cpfLimpo = usuarioLogado.cpf.replace(/\D/g, '');
+    router.push(`/paciente/${cpfLimpo}`);
+  }
+ else if (usuarioLogado.role === 'medico') {
+      router.push(`/medico/${cpfLimpo}`);
+    } else if (usuarioLogado.role === 'administrador') {
+      router.push(`/paciente/${cpfLimpo}`); // Admin pode ver como paciente ou ter página própria
+    }
+  };
+
+  // ✅ FUNÇÃO PARA OBTER O TÍTULO CORRETO DA PÁGINA
+  const getTituloPagina = () => {
+    if (!usuarioLogado) return 'Carregando...';
+    
+    if (usuarioLogado.role === 'paciente') return 'Minhas Viagens';
+    if (usuarioLogado.role === 'motorista') return 'Minhas Viagens como Motorista';
+    if (usuarioLogado.role === 'medico') return 'Minhas Consultas Agendadas';
+    if (usuarioLogado.role === 'administrador') return 'Buscar Paciente';
+    
+    return 'Início';
+  };
+
+  // ✅ FUNÇÃO PARA OBTER O LABEL DO PERFIL
+  const getLabelPerfil = () => {
+    if (!usuarioLogado) return 'Perfil';
+    
+    if (usuarioLogado.role === 'administrador') return 'Ver Perfil';
+    return 'Meu Perfil';
+  };
+
   if (!montado) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header titulo={usuarioLogado?.role === 'paciente' ? 'Minhas Viagens' : 'Buscar Paciente'} />
+      <Header titulo={getTituloPagina()} />
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         
-        {/* Card de Perfil */}
+        {/* Card de Perfil - ATUALIZADO */}
         {usuarioLogado && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
             <div className="flex items-center justify-between">
@@ -171,21 +247,24 @@ export default function BuscaPage() {
                     CPF: {usuarioLogado.cpf}
                   </div>
                   <div className="text-xs text-gray-500 mt-1 uppercase font-medium">
-                    {usuarioLogado.role === 'administrador' ? 'Administrador' : 'Paciente'}
+                    {usuarioLogado.role === 'administrador' && 'Administrador'}
+                    {usuarioLogado.role === 'paciente' && 'Paciente'}
+                    {usuarioLogado.role === 'motorista' && 'Motorista'}
+                    {usuarioLogado.role === 'medico' && 'Médico'}
                   </div>
                 </div>
               </div>
               <button
-                onClick={() => router.push(`/paciente/${usuarioLogado.cpf.replace(/\D/g, '')}`)}
+                onClick={irParaPerfil}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all text-sm font-medium shadow-sm"
               >
-                {usuarioLogado.role === 'administrador' ? 'Ver Perfil' : 'Meu Perfil'}
+                {getLabelPerfil()}
               </button>
             </div>
           </div>
         )}
 
-        {/* BARRA DE BUSCA (LIMPA) */}
+        {/* BARRA DE BUSCA - SÓ PARA ADMINISTRADOR */}
         {usuarioLogado?.role === 'administrador' && !pacienteSelecionado && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -209,11 +288,10 @@ export default function BuscaPage() {
                 {buscando ? 'Buscando...' : 'Buscar'}
               </button>
             </div>
-            {/* Texto de ajuda removido daqui */}
           </div>
         )}
 
-        {/* BOTÕES ADMINISTRATIVOS */}
+        {/* BOTÕES ADMINISTRATIVOS - SÓ PARA ADMINISTRADOR */}
         {usuarioLogado?.role === 'administrador' && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
             <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
@@ -257,11 +335,11 @@ export default function BuscaPage() {
           </div>
         )}
 
-        {/* Mensagens e Listas */}
-        {usuarioLogado?.role === 'paciente' && buscando && (
+        {/* Mensagens e Loading */}
+        {buscando && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 text-center">
             <div className="inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-3"></div>
-            <p className="text-gray-600">Carregando suas viagens...</p>
+            <p className="text-gray-600">Carregando viagens...</p>
           </div>
         )}
 
@@ -271,12 +349,12 @@ export default function BuscaPage() {
               <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
               <div className="flex-1">
                 <p className="text-yellow-800 text-sm">{mensagem}</p>
-                {usuarioLogado?.role === 'paciente' && <button onClick={() => buscarMinhasViagens(usuarioLogado.cpf)} className="mt-3 text-sm text-primary hover:text-primary-dark font-medium">Tentar novamente</button>}
               </div>
             </div>
           </div>
         )}
 
+        {/* Lista de Pacientes Encontrados - SÓ ADMIN */}
         {pacientes.length > 0 && (
           <div className="space-y-3 mb-6">
             <div className="flex items-center justify-between mb-3">
@@ -307,6 +385,7 @@ export default function BuscaPage() {
           </div>
         )}
 
+        {/* Header do Paciente Selecionado - SÓ ADMIN */}
         {pacienteSelecionado && usuarioLogado?.role === 'administrador' && (
           <div className="bg-gradient-to-r from-primary to-blue-600 text-white rounded-lg shadow-lg p-6 mb-6">
             <button onClick={handleVoltarParaBusca} className="mb-4 flex items-center gap-2 text-blue-100 hover:text-white transition-colors">
@@ -328,23 +407,34 @@ export default function BuscaPage() {
           </div>
         )}
 
-        {pacienteSelecionado && usuarioLogado?.role === 'paciente' && viagens.length > 0 && (
+        {/* Contador de Viagens - PARA TODOS OS USUÁRIOS NÃO-ADMIN */}
+        {usuarioLogado?.role !== 'administrador' && viagens.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 <div>
                   <div className="font-bold text-gray-900 text-lg">{viagens.length}</div>
-                  <div className="text-sm text-gray-600">Suas viagens cadastradas</div>
+                  <div className="text-sm text-gray-600">
+                    {usuarioLogado.role === 'paciente' && 'Suas viagens cadastradas'}
+                    {usuarioLogado.role === 'motorista' && 'Viagens atribuídas a você'}
+                    {usuarioLogado.role === 'medico' && 'Consultas agendadas'}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
+        {/* Lista de Viagens */}
         {viagens.length > 0 && (
           <div className="mb-6 animate-fadeIn">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Viagens Cadastradas ({viagens.length})</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {usuarioLogado?.role === 'administrador' && `Viagens Cadastradas (${viagens.length})`}
+              {usuarioLogado?.role === 'paciente' && `Suas Viagens (${viagens.length})`}
+              {usuarioLogado?.role === 'motorista' && `Suas Viagens como Motorista (${viagens.length})`}
+              {usuarioLogado?.role === 'medico' && `Suas Consultas (${viagens.length})`}
+            </h2>
             <div className="space-y-4">
               {viagens.map((viagem) => (
                 <CardViagem key={viagem.viagem_id} viagem={viagem} onClick={() => handleVerDetalhes(viagem)} />
@@ -353,9 +443,7 @@ export default function BuscaPage() {
           </div>
         )}
 
-
-
-        {/* CALENDÁRIO DE VIAGENS - NOVO */}
+        {/* CALENDÁRIO DE VIAGENS - SÓ ADMIN */}
         {usuarioLogado?.role === 'administrador' && (
           <div className="mt-8">
             <CalendarioViagens onSelecionarData={handleSelecionarDataCalendario} />

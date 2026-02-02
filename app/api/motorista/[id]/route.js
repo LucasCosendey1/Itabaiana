@@ -1,3 +1,4 @@
+//motorista/[id]/route.js
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 

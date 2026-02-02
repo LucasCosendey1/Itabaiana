@@ -50,10 +50,6 @@ export default function DetalhesHospitalPage() {
     window.print();
   };
 
-  // Separação de Viagens para o Relatório
-  const viagensRealizadas = viagens.filter(v => v.status === 'concluido' || new Date(v.data_viagem) < new Date());
-  const viagensAgendadas = viagens.filter(v => v.status === 'agendado' || (v.status === 'pendente' && new Date(v.data_viagem) >= new Date()));
-
   if (carregando) return <div className="min-h-screen bg-gray-50 flex justify-center items-center text-gray-500">Carregando...</div>;
 
   if (erro || !unidade) return (
@@ -64,18 +60,17 @@ export default function DetalhesHospitalPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10 print:bg-white print:pb-0">
+    <div className="min-h-screen bg-gray-50 pb-10 print:bg-white print:pb-0 print:pt-0">
       
       {/* ESTILOS DE IMPRESSÃO */}
       <style jsx global>{`
         @media print {
-          @page { margin: 10mm; size: A4; }
-          body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: Arial, sans-serif; color: #000; }
+          @page { margin: 0; size: auto; }
+          body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: Arial, sans-serif; }
+          .print-header-bg { background-color: #2563eb !important; color: white !important; }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
-          .print-bg-blue { background-color: #eff6ff !important; }
-          .print-header-bg { background-color: #2563eb !important; color: white !important; }
-          .print-row:nth-child(even) { background-color: #f9fafb !important; }
+          .break-inside-avoid { page-break-inside: avoid; }
         }
         .print-only { display: none; }
       `}</style>
@@ -85,155 +80,186 @@ export default function DetalhesHospitalPage() {
       </div>
 
       {/* =================================================================================
-          LAYOUT DO RELATÓRIO IMPRESSO (OCULTO NA TELA)
+          LAYOUT DO RELATÓRIO IMPRESSO (ESTILO PRONTUÁRIO)
          ================================================================================= */}
       <div className="print-only w-full">
         
-        {/* Cabeçalho Azul */}
-        <div className="flex flex-col border-b-2 border-blue-900 pb-4 mb-6">
-            <div className="text-center mb-6">
-                <h2 className="text-xs text-blue-600 uppercase tracking-widest mb-1">RELATÓRIO DE UNIDADE DE SAÚDE</h2>
-                <h1 className="text-3xl font-black text-blue-900 uppercase">{unidade.nome}</h1>
-                <p className="text-lg text-blue-800 mt-1 font-bold uppercase">{unidade.tipo === 'hospital' ? 'Hospital / Clínica' : 'Unidade Básica de Saúde (UBS)'}</p>
-                <p className="text-sm mt-1 text-gray-600">Documento Gerado em: {new Date().toLocaleDateString()}</p>
+        {/* Cabeçalho Azul (Estilo Prontuário) */}
+        <div className="flex flex-col w-full print-header-bg py-6 px-8 mb-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold text-white uppercase tracking-wide">Relatório de Unidade</h1>
+                    <p className="text-blue-100 text-sm mt-1">Sistema de Gestão de TFD • Município de Itabaiana-PB</p>
+                </div>
+                <div className="text-right text-white/80 text-xs">
+                    <p>Gerado em: {new Date().toLocaleDateString()}</p>
+                    <p>{new Date().toLocaleTimeString()}</p>
+                </div>
+            </div>
+        </div>
+
+        <div className="px-8 pb-8">
+            
+            {/* Título Principal da Unidade */}
+            <div className="mb-6 border-b-2 border-gray-200 pb-4">
+                <h1 className="text-2xl font-black text-black uppercase mb-1">{unidade.nome}</h1>
+                <p className="text-gray-600 font-medium uppercase text-sm">
+                    {unidade.tipo === 'hospital' ? '🏥 Hospital / Clínica Especializada' : '🩺 Unidade Básica de Saúde (UBS)'}
+                </p>
             </div>
 
-            {/* Dados da Unidade */}
-            <div className="grid grid-cols-2 gap-8 border-t border-blue-200 pt-4">
-                <div>
-                    <h3 className="text-xs font-bold text-blue-700 uppercase mb-2 border-b border-blue-100 pb-1">Informações Gerais</h3>
-                    <div className="text-sm space-y-1 text-black">
-                        <p><strong>Endereço:</strong> {unidade.endereco || '-'}</p>
-                        <p><strong>CEP:</strong> {unidade.cep || '-'}</p>
-                        <p><strong>Telefone:</strong> {unidade.telefone || '-'}</p>
-                        <p><strong>CNPJ:</strong> {unidade.cnpj || '-'}</p>
+            {/* SEÇÃO 1: DADOS GERAIS */}
+            <section className="mb-8">
+                <h3 className="text-xs font-bold text-blue-600 uppercase mb-3 border-b border-blue-200 pb-1">
+                    Informações Institucionais & Contato
+                </h3>
+                <div className="grid grid-cols-2 gap-6 text-sm">
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">Endereço Completo</span>
+                        <strong className="text-gray-900">{unidade.endereco || '-'}</strong>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                         <div>
+                            <span className="block text-gray-500 text-xs uppercase">Telefone</span>
+                            <strong className="text-gray-900">{unidade.telefone || '-'}</strong>
+                        </div>
+                        <div>
+                            <span className="block text-gray-500 text-xs uppercase">CEP</span>
+                            <strong className="text-gray-900">{unidade.cep || '-'}</strong>
+                        </div>
+                    </div>
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">CNPJ</span>
+                        <strong className="text-gray-900">{unidade.cnpj || 'Não informado'}</strong>
+                    </div>
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">Responsável Técnico / Administrativo</span>
+                        <strong className="text-gray-900">{unidade.responsavel || 'Não informado'}</strong>
+                    </div>
+                    <div className="col-span-2">
+                        <span className="block text-gray-500 text-xs uppercase">Horário de Funcionamento</span>
+                        <strong className="text-gray-900">{unidade.horario_funcionamento || '-'}</strong>
                     </div>
                 </div>
-                <div>
-                    <h3 className="text-xs font-bold text-blue-700 uppercase mb-2 border-b border-blue-100 pb-1">Gestão e Capacidade</h3>
-                    <div className="text-sm space-y-1 text-black">
-                        <p><strong>Responsável:</strong> {unidade.responsavel || '-'}</p>
-                        <p><strong>Horário:</strong> {unidade.horario_funcionamento || '-'}</p>
-                        <p><strong>Total Médicos:</strong> {medicos.length}</p>
-                        <p><strong>Total Viagens Recebidas:</strong> {viagens.length}</p>
-                        <p><strong>Total Pacientes Cadastrados:</strong> {pacientes.length}</p>
+            </section>
+
+            {/* SEÇÃO 2: ESTATÍSTICAS RÁPIDAS (BOX AZUL) */}
+            <section className="mb-8 bg-blue-50 border border-blue-100 rounded-lg p-4">
+                 <h3 className="text-xs font-bold text-blue-600 uppercase mb-3 border-b border-blue-200 pb-1">
+                    Resumo Operacional
+                </h3>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">Corpo Clínico</span>
+                        <strong className="text-xl text-blue-800">{medicos.length}</strong>
+                    </div>
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">Pacientes Vinculados</span>
+                        <strong className="text-xl text-blue-800">{pacientes.length}</strong>
+                    </div>
+                    <div>
+                        <span className="block text-gray-500 text-xs uppercase">Total de Viagens</span>
+                        <strong className="text-xl text-blue-800">{viagens.length}</strong>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        {/* 1. CORPO CLÍNICO */}
-        <div className="mb-8">
-            <h2 className="text-sm font-bold text-blue-800 uppercase border-b-2 border-blue-800 pb-1 mb-2">
-                Corpo Clínico Vinculado ({medicos.length})
-            </h2>
-            {medicos.length === 0 ? (
-                <p className="text-xs text-gray-500 italic py-2">Nenhum médico vinculado.</p>
-            ) : (
-                <table className="w-full text-xs text-left">
-                    <thead className="bg-blue-50 text-blue-900 font-bold uppercase">
-                        <tr>
-                            <th className="py-2 px-2">Nome do Médico</th>
-                            <th className="py-2 px-2">CRM</th>
-                            <th className="py-2 px-2">Especialização</th>
-                            <th className="py-2 px-2 text-center">Viagens</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {medicos.map((m, i) => (
-                            <tr key={i} className="print-row">
-                                <td className="py-2 px-2 font-bold">{m.nome_completo}</td>
-                                <td className="py-2 px-2">{m.crm || '-'}</td>
-                                <td className="py-2 px-2">{m.especializacao || '-'}</td>
-                                <td className="py-2 px-2 text-center">{ (m.total_agendadas || 0) + (m.total_realizadas || 0) }</td>
+            {/* SEÇÃO 3: CORPO CLÍNICO */}
+            <section className="mb-8 break-inside-avoid">
+                <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 border-b pb-1">
+                    Corpo Clínico Vinculado
+                </h3>
+                {medicos.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic border border-dashed p-4 text-center rounded">Nenhum médico vinculado a esta unidade.</p>
+                ) : (
+                    <table className="w-full text-sm text-left border-collapse">
+                        <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                            <tr>
+                                <th className="px-3 py-2 border-b">Nome do Médico</th>
+                                <th className="px-3 py-2 border-b">CRM</th>
+                                <th className="px-3 py-2 border-b">Especialização</th>
+                                <th className="px-3 py-2 border-b text-center">Atendimentos</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
-        </div>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {medicos.map((m, i) => (
+                                <tr key={i}>
+                                    <td className="px-3 py-2 font-bold text-gray-800">{m.nome_completo}</td>
+                                    <td className="px-3 py-2 text-gray-600">{m.crm || '-'}</td>
+                                    <td className="px-3 py-2 text-gray-600">{m.especializacao || '-'}</td>
+                                    <td className="px-3 py-2 text-center font-medium">{(m.total_agendadas || 0) + (m.total_realizadas || 0)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </section>
 
-        {/* 2. PACIENTES CADASTRADOS (NOVO) */}
-        {pacientes.length > 0 && (
-            <div className="mb-8">
-                <h2 className="text-sm font-bold text-blue-800 uppercase border-b-2 border-blue-800 pb-1 mb-2">
-                    Pacientes Cadastrados ({pacientes.length})
-                </h2>
-                <table className="w-full text-xs text-left">
-                    <thead className="bg-blue-50 text-blue-900 font-bold uppercase">
-                        <tr>
-                            <th className="py-2 px-2">Nome do Paciente</th>
-                            <th className="py-2 px-2 w-32">CPF</th>
-                            <th className="py-2 px-2 w-40">Cartão SUS</th>
-                            <th className="py-2 px-2 w-32">Contato</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {pacientes.map((p, i) => (
-                            <tr key={p.id || i} className="print-row">
-                                <td className="py-2 px-2 font-bold">{p.nome_completo}</td>
-                                <td className="py-2 px-2">{p.cpf || '-'}</td>
-                                <td className="py-2 px-2">{p.cartao_sus || '-'}</td>
-                                <td className="py-2 px-2">{p.telefone || '-'}</td>
+            {/* SEÇÃO 4: HISTÓRICO DE VIAGENS RECENTES */}
+            <section className="mb-8 break-inside-avoid">
+                <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 border-b pb-1">
+                    Histórico Recente de Viagens (Últimas 30)
+                </h3>
+                {viagens.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic border border-dashed p-4 text-center rounded">Nenhuma viagem registrada.</p>
+                ) : (
+                    <table className="w-full text-sm text-left border-collapse">
+                        <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                            <tr>
+                                <th className="px-3 py-2 border-b w-24">Data</th>
+                                <th className="px-3 py-2 border-b w-24">Cód.</th>
+                                <th className="px-3 py-2 border-b">Motorista</th>
+                                <th className="px-3 py-2 border-b text-right">Status</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        )}
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {viagens.slice(0, 30).map((v) => (
+                                <tr key={v.viagem_id}>
+                                    <td className="px-3 py-2 font-medium">{formatarData(v.data_viagem)}</td>
+                                    <td className="px-3 py-2 text-gray-500">{v.codigo_viagem}</td>
+                                    <td className="px-3 py-2">{v.motorista_nome || 'Não definido'}</td>
+                                    <td className="px-3 py-2 text-right">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
+                                            v.status === 'concluido' ? 'border-green-600 text-green-700' :
+                                            v.status === 'cancelado' ? 'border-red-600 text-red-700' :
+                                            'border-yellow-600 text-yellow-700'
+                                        }`}>
+                                            {formatarStatus(v.status)}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </section>
 
-        {/* 3. HISTÓRICO DE VIAGENS */}
-        <div>
-            <h2 className="text-sm font-bold text-gray-700 uppercase border-b-2 border-gray-400 pb-1 mb-2">
-                Histórico de Viagens Recebidas ({viagens.length})
-            </h2>
-            {viagens.length === 0 ? (
-                <p className="text-xs text-gray-500 italic py-2">Nenhuma viagem registrada para este destino.</p>
-            ) : (
-                <table className="w-full text-xs text-left">
-                    <thead className="bg-gray-100 text-gray-600 font-bold uppercase">
-                        <tr>
-                            <th className="py-2 px-2 w-24">Data</th>
-                            <th className="py-2 px-2 w-24">Código</th>
-                            <th className="py-2 px-2">Motorista</th>
-                            <th className="py-2 px-2 w-20 text-right">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {viagens.slice(0, 30).map(v => ( 
-                            <tr key={v.viagem_id} className="print-row">
-                                <td className="py-2 px-2">{formatarData(v.data_viagem)}</td>
-                                <td className="py-2 px-2">{v.codigo_viagem}</td>
-                                <td className="py-2 px-2">{v.motorista_nome || 'N/D'}</td>
-                                <td className="py-2 px-2 text-right">{formatarStatus(v.status)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
-            {viagens.length > 30 && <p className="text-[10px] text-gray-500 mt-2 text-right">* Exibindo apenas as últimas 30 viagens.</p>}
-        </div>
-
-        {/* Rodapé Informativo */}
-        <div className="mt-8 p-6 border-t-2 border-blue-200 print-bg-blue rounded-lg break-inside-avoid">
-            <div className="text-right mb-8 text-blue-900">
-                <span className="text-xl font-bold uppercase">TOTAL DE REGISTROS: {pacientes.length + viagens.length}</span>
-            </div>
-            <div className="flex justify-between text-xs text-blue-900 px-4">
-                <div className="text-center w-5/12">
-                    <p className="font-bold uppercase tracking-wider">Gestão de Unidades</p>
+            {/* RODAPÉ DO PDF (ASSINATURAS) */}
+            <div className="mt-16 pt-8 border-t border-black break-inside-avoid">
+                <div className="flex justify-between text-xs text-gray-600">
+                    <div className="text-center w-1/3">
+                        <div className="border-t border-black w-full mb-2"></div>
+                        <p className="uppercase font-bold">Diretor/Responsável da Unidade</p>
+                        <p>{unidade.nome}</p>
+                    </div>
+                    <div className="text-center w-1/3">
+                        <div className="border-t border-black w-full mb-2"></div>
+                        <p className="uppercase font-bold">Coordenação TFD</p>
+                        <p>Município de Itabaiana-PB</p>
+                    </div>
                 </div>
-                <div className="text-center w-5/12">
-                    <p className="font-bold uppercase tracking-wider">Coordenação TFD</p>
-                </div>
+                <p className="text-center mt-8 italic text-[10px] text-gray-400">
+                    Relatório gerado automaticamente pelo sistema de gestão. Válido para conferência interna.
+                </p>
             </div>
+
         </div>
       </div>
       {/* FIM DO LAYOUT DE IMPRESSÃO */}
 
 
       {/* =================================================================================
-          LAYOUT DE TELA (PADRÃO)
+          LAYOUT DE TELA (PADRÃO - Mantido conforme original, apenas ajustes técnicos)
          ================================================================================= */}
       <main className="container mx-auto px-4 py-6 max-w-4xl no-print">
 
@@ -339,7 +365,7 @@ export default function DetalhesHospitalPage() {
           </div>
         </div>
 
-        {/* Histórico de Viagens (NOVA SEÇÃO) */}
+        {/* Histórico de Viagens (TELA) */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-900">Histórico de Viagens</h2>
@@ -353,7 +379,6 @@ export default function DetalhesHospitalPage() {
             ) : (
                 <div className="space-y-3">
                     {viagens.map((viagem) => {
-                        // Garantir código da viagem para o link
                         const codigoViagem = viagem.codigo_viagem || viagem.codigo || viagem.viagem_id;
                         const statusClass = getCorStatus(viagem.status);
 
@@ -388,7 +413,7 @@ export default function DetalhesHospitalPage() {
             )}
         </div>
 
-        {/* Estatísticas de Pacientes (Só para UBS) - Mantido */}
+        {/* Estatísticas de Pacientes (TELA - Só para UBS) */}
         {unidade.tipo === 'ubs' && (
             <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
