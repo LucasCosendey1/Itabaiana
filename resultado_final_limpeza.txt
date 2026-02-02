@@ -1,0 +1,47 @@
+      constraint_name      | constraint_type 
+---------------------------+-----------------
+ viagens_status_check      | CHECK
+ viagens_data_viagem_check | CHECK
+ 24782_24902_1_not_null    | CHECK
+ 24782_24902_2_not_null    | CHECK
+ 24782_24902_7_not_null    | CHECK
+ 24782_24902_9_not_null    | CHECK
+ 24782_24902_10_not_null   | CHECK
+(7 linhas)
+
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+UPDATE 10
+UPDATE 8
+UPDATE 10
+UPDATE 10
+ codigo_viagem | data_viagem |               hospital_destino                |  status  | numero_vagas | paciente_id | medico_id | motivo | horario_consulta 
+---------------+-------------+-----------------------------------------------+----------+--------------+-------------+-----------+--------+------------------
+ V010          | 2026-03-05  | Hospital de Trauma de Campina Grande          | pendente |            1 |             |           |        | 
+ V009          | 2026-03-01  | Hospital de Emergência e Trauma - João Pessoa | pendente |            1 |             |           |        | 
+ V2026003      | 2026-02-25  | Hospital de Trauma Campina Grande             | pendente |           18 |             |           |        | 
+ V008          | 2026-02-25  | Hospital Regional de Campina Grande           | pendente |            1 |             |           |        | 
+ V005          | 2026-02-20  | Hospital de Emergência e Trauma - João Pessoa | pendente |            1 |             |           |        | 
+ V2026002      | 2026-02-20  | Hospital Universitario Joao Pessoa            | pendente |           15 |             |           |        | 
+ V2026001      | 2026-02-15  | Hospital Regional de Campina Grande           | pendente |           20 |             |           |        | 
+ V004          | 2026-02-15  | Hospital Universitário - João Pessoa          | pendente |            1 |             |           |        | 
+ V002          | 2026-02-10  | Hospital de Trauma de Campina Grande          | pendente |            1 |             |           |        | 
+ V007          | 2026-02-08  | Hospital Universitário - João Pessoa          | pendente |            1 |             |           |        | 
+(10 linhas)
+
+       constraint_name       | constraint_type 
+-----------------------------+-----------------
+ 24782_24902_10_not_null     | CHECK
+ 24782_24902_1_not_null      | CHECK
+ 24782_24902_2_not_null      | CHECK
+ 24782_24902_7_not_null      | CHECK
+ 24782_24902_9_not_null      | CHECK
+ viagens_criado_por_fkey     | FOREIGN KEY
+ viagens_motorista_id_fkey   | FOREIGN KEY
+ viagens_onibus_id_fkey      | FOREIGN KEY
+ viagens_ubs_destino_id_fkey | FOREIGN KEY
+ viagens_pkey                | PRIMARY KEY
+ viagens_codigo_viagem_key   | UNIQUE
+(11 linhas)
+

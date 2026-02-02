@@ -1,0 +1,93 @@
+     momento      | usuarios_paciente | pacientes | viagem_pacientes | usuarios_medico | usuarios_motorista | usuarios_admin | viagens | onibus 
+------------------+-------------------+-----------+------------------+-----------------+--------------------+----------------+---------+--------
+ ANTES DA LIMPEZA |                 8 |         8 |                0 |               3 |                  3 |              3 |      17 |      4
+(1 linha)
+
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+     column_name      |          data_type          | character_maximum_length | is_nullable |            column_default             
+----------------------+-----------------------------+--------------------------+-------------+---------------------------------------
+ id                   | integer                     |                          | NO          | nextval('pacientes_id_seq'::regclass)
+ usuario_id           | integer                     |                          | NO          | 
+ cartao_sus           | character varying           |                       20 | NO          | 
+ nome_pai             | character varying           |                      255 | YES         | 
+ nome_mae             | character varying           |                      255 | NO          | 
+ data_nascimento      | date                        |                          | NO          | 
+ tipo_sanguineo       | character varying           |                        5 | YES         | 
+ alergias             | text                        |                          | YES         | 
+ observacoes_medicas  | text                        |                          | YES         | 
+ data_cadastro        | timestamp without time zone |                          | YES         | CURRENT_TIMESTAMP
+ ubs_cadastro_id      | integer                     |                          | YES         | 
+ agente_id            | integer                     |                          | YES         | 
+ microarea            | character varying           |                       50 | YES         | 
+ responsavel_familiar | boolean                     |                          | YES         | false
+ agente_nome          | character varying           |                      255 | YES         | 
+ pode_doar_para       | text                        |                          | YES         | 
+ pode_receber_de      | text                        |                          | YES         | 
+ mudou_se             | boolean                     |                          | YES         | false
+ data_obito           | date                        |                          | YES         | 
+ hora_cadastro_inicio | time without time zone      |                          | YES         | 
+ hora_cadastro_fim    | time without time zone      |                          | YES         | 
+(21 linhas)
+
+DELETE 0
+DELETE 8
+DELETE 8
+ALTER SEQUENCE
+ALTER SEQUENCE
+ALTER SEQUENCE
+      momento      | usuarios_paciente | pacientes | viagem_pacientes | usuarios_medico | usuarios_motorista | usuarios_admin | viagens | onibus 
+-------------------+-------------------+-----------+------------------+-----------------+--------------------+----------------+---------+--------
+ DEPOIS DA LIMPEZA |                 0 |         0 |                0 |               3 |                  3 |              3 |      17 |      4
+(1 linha)
+
+ id |     nome_completo     |      cpf       |     crm      |  especializacao   
+----+-----------------------+----------------+--------------+-------------------
+  7 | Dr. Antônio Carlos    | 555.555.555-55 | CRM/PB 67890 | Ortopedia
+  5 | Dr. Roberto Fernandes | 333.333.333-33 | CRM/PB 12345 | Oftalmologia
+  6 | Dra. Juliana Lima     | 444.444.444-44 | CRM/PB 54321 | Gastroenterologia
+(3 linhas)
+
+ id |      nome_completo      |      cpf       |     cnh     |       veiculo_modelo       | veiculo_placa 
+----+-------------------------+----------------+-------------+----------------------------+---------------
+  3 | Carlos Eduardo Oliveira | 111.111.111-11 | 12345678901 | Van Mercedes-Benz Sprinter | ABC-1234
+  4 | Pedro Henrique Souza    | 222.222.222-22 | 09876543210 | Micro-ônibus Volare        | XYZ-5678
+ 18 | Seu Ivan                | 123.456.423-11 | 35423341234 |                            | 
+(3 linhas)
+
+ id |  placa   |        modelo         | ano  | capacidade_passageiros | disponivel 
+----+----------+-----------------------+------+------------------------+------------
+  1 | ABC-1234 | Mercedes-Benz OF-1721 | 2018 |                     45 | t
+  7 | ALE-K121 | Geladinho TESTE       | 2017 |                     15 | t
+  3 | DEF-9012 | Iveco CityClass 70C17 | 2019 |                     40 | t
+  2 | XYZ-5678 | Volkswagen 17.230     | 2020 |                     50 | t
+(4 linhas)
+
+ codigo_viagem | data_viagem |               hospital_destino                |  status  | numero_vagas | paciente_id | medico_id 
+---------------+-------------+-----------------------------------------------+----------+--------------+-------------+-----------
+ V010          | 2026-03-05  | Hospital de Trauma de Campina Grande          | pendente |            1 |           2 |         3
+ V009          | 2026-03-01  | Hospital de Emergência e Trauma - João Pessoa | pendente |            1 |           4 |          
+ V008          | 2026-02-25  | Hospital Regional de Campina Grande           | pendente |            1 |           1 |         1
+ V2026003      | 2026-02-25  | Hospital de Trauma Campina Grande             | pendente |           18 |             |          
+ V2026002      | 2026-02-20  | Hospital Universitario Joao Pessoa            | pendente |           15 |             |          
+ V005          | 2026-02-20  | Hospital de Emergência e Trauma - João Pessoa | pendente |            1 |           4 |          
+ V2026001      | 2026-02-15  | Hospital Regional de Campina Grande           | pendente |           20 |             |          
+ V004          | 2026-02-15  | Hospital Universitário - João Pessoa          | pendente |            1 |           3 |         2
+ V002          | 2026-02-10  | Hospital de Trauma de Campina Grande          | pendente |            1 |           2 |         3
+ V007          | 2026-02-08  | Hospital Universitário - João Pessoa          | pendente |            1 |           3 |         2
+(10 linhas)
+
+ id | nome_completo |      cpf       |           cargo           | nivel_acesso 
+----+---------------+----------------+---------------------------+--------------
+  1 | João Silva    | 123.456.789-00 | Coordenador de Transporte |            3
+  2 | Maria Santos  | 987.654.321-00 | Supervisora de Saúde      |            2
+ 12 | Usuario Teste | 000.000.000-00 | Teste                     |            3
+(3 linhas)
+
