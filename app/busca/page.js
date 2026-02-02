@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import CardViagem from '../components/CardViagem';
 import InputCPF from '../components/InputCPF';
 import CalendarioViagens from '../components/CalendarioViagens';
-import RelatorioViagens from 'components/RelatorioViagens';
+import RelatorioViagens from '../components/Relatorioviagens';
 import { verificarAutenticacao, getNomeResumido } from '../utils/helpers';
 
 export default function BuscaPage() {
