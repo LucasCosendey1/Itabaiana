@@ -1,11 +1,10 @@
 // ============================================
-// SCRIPT DE IMPORTAÇÃO DE PACIENTES
+// SCRIPT DE ATUALIZAÇÃO - ACS E MICROÁREA
 // Sistema de Transporte SUS - Itabaiana/PB
 // ============================================
 
 const { Client } = require('pg');
 const xlsx = require('xlsx');
-const bcrypt = require('bcryptjs');
 const fs = require('fs');
 require('dotenv').config();
 
@@ -14,21 +13,17 @@ require('dotenv').config();
 // ============================================
 const ARQUIVO_EXCEL = 'C:\\Users\\lukec\\OneDrive\\Área de Trabalho\\agoravai.xlsx';
 const NOME_PLANILHA = 'ANALITICO';
-const EMAIL_PADRAO = 'paciente@itabaiana.pb.gov.br';
 const BATCH_SIZE = 100;
-const SENHA_SALT_ROUNDS = 10;
 
 // ============================================
 // ESTATÍSTICAS
 // ============================================
 let stats = {
   total_linhas: 0,
-  pacientes_importados: 0,
-  pacientes_erro: 0,
+  atualizados: 0,
+  nao_encontrados: 0,
   sem_cpf: 0,
-  cpf_duplicado: 0,
-  ubs_criadas: 0,
-  erros: []
+  erros: 0
 };
 
 // ============================================
@@ -43,74 +38,6 @@ function formatarCPF(cpf) {
   return cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 }
 
-function extrairCEP(endereco) {
-  if (!endereco) return '58360-000';
-  const match = endereco.match(/Cep:\s*(\d{8})/i);
-  if (match) {
-    const cep = match[1];
-    return `${cep.slice(0, 5)}-${cep.slice(5)}`;
-  }
-  return '58360-000';
-}
-
-function limparEndereco(endereco) {
-  if (!endereco) return 'Não informado';
-  return endereco.split('Cep:')[0].trim() || 'Não informado';
-}
-
-function parseData(dataStr) {
-  if (!dataStr) return null;
-  try {
-    const partes = dataStr.toString().split('/');
-    if (partes.length === 3) {
-      const [dia, mes, ano] = partes;
-      return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
-    }
-  } catch (e) {
-    return null;
-  }
-  return null;
-}
-
-function parseHora(horaStr) {
-  if (!horaStr) return null;
-  try {
-    const partes = horaStr.toString().split(':');
-    if (partes.length >= 2) {
-      return `${partes[0].padStart(2, '0')}:${partes[1].padStart(2, '0')}:00`;
-    }
-  } catch (e) {
-    return null;
-  }
-  return null;
-}
-
-function normalizarSexo(sexo) {
-  if (!sexo) return 'Ignorado';
-  const sexoLower = sexo.toString().toLowerCase();
-  if (sexoLower.includes('fem') || sexoLower === 'f') return 'Feminino';
-  if (sexoLower.includes('masc') || sexoLower === 'm') return 'Masculino';
-  if (sexoLower.includes('ind')) return 'Indeterminado';
-  return 'Ignorado';
-}
-
-function normalizarTipoSanguineo(tipo) {
-  if (!tipo || tipo === 'Não sabe' || tipo === 'Nao sabe') return null;
-  return tipo.toString().trim();
-}
-
-function normalizarBoolean(valor) {
-  if (!valor) return false;
-  return valor.toString().toUpperCase() === 'SIM';
-}
-
-async function gerarHashSenha(senha) {
-  return await bcrypt.hash(senha, SENHA_SALT_ROUNDS);
-}
-
-// ============================================
-// CONECTAR AO BANCO
-// ============================================
 async function conectarBanco() {
   const client = new Client({
     connectionString: process.env.DATABASE_URL
@@ -134,71 +61,22 @@ function lerExcel() {
   const workbook = xlsx.readFile(ARQUIVO_EXCEL);
   
   if (!workbook.SheetNames.includes(NOME_PLANILHA)) {
-    throw new Error(`Planilha "${NOME_PLANILHA}" não encontrada. Planilhas disponíveis: ${workbook.SheetNames.join(', ')}`);
+    throw new Error(`Planilha "${NOME_PLANILHA}" não encontrada.`);
   }
   
   const worksheet = workbook.Sheets[NOME_PLANILHA];
+  const dados = xlsx.utils.sheet_to_json(worksheet, { defval: null });
   
-  // ✅ Cabeçalho na linha 1 (índice 0)
-  const dados = xlsx.utils.sheet_to_json(worksheet, { 
-    defval: null 
-  });
-  
-  console.log(`✅ ${dados.length} linhas lidas do Excel`);
+  console.log(`✅ ${dados.length} linhas lidas do Excel\n`);
   stats.total_linhas = dados.length;
-  
-  // Debug: mostrar primeiras colunas da primeira linha
- if (dados.length > 0) {
-  console.log('\n📋 Exemplo da primeira linha:');
-  console.log(`   NOME: ${dados[0].NOME}`);
-  console.log(`   CPF: ${dados[0].CPF}`);
-  console.log(`   UBS: ${dados[0].UBS}`);
-  
-  // ✅ ADICIONAR ESTAS LINHAS PARA DEBUGAR:
-  console.log(`\n🔍 TODAS AS COLUNAS DISPONÍVEIS:`);
-  console.log(Object.keys(dados[0]));
-  console.log(`\n🔍 VALOR DO CARTÃO SUS:`);
-  console.log(dados[0]['CARTÃO SUS']);
-  console.log(dados[0]['CARTAO SUS']);
-  console.log(dados[0]['Cartão SUS']);
-  console.log('\n');
-}
   
   return dados;
 }
 
 // ============================================
-// CRIAR/BUSCAR UBS
+// ATUALIZAR PACIENTE
 // ============================================
-async function obterOuCriarUBS(client, nomeUBS) {
-  if (!nomeUBS || nomeUBS.trim() === '') return null;
-  
-  const nomeUBSLimpo = nomeUBS.trim();
-  
-  const resultado = await client.query(
-    'SELECT id FROM ubs WHERE nome = $1',
-    [nomeUBSLimpo]
-  );
-  
-  if (resultado.rows.length > 0) {
-    return resultado.rows[0].id;
-  }
-  
-  const novaUBS = await client.query(
-    `INSERT INTO ubs (nome, tipo, endereco, telefone, cep, ativo) 
-     VALUES ($1, $2, $3, $4, $5, $6) 
-     RETURNING id`,
-    [nomeUBSLimpo, 'ubs', 'Itabaiana/PB', '', '58360-000', true]
-  );
-  
-  stats.ubs_criadas++;
-  return novaUBS.rows[0].id;
-}
-
-// ============================================
-// IMPORTAR UM PACIENTE
-// ============================================
-async function importarPaciente(client, dados) {
+async function atualizarPaciente(client, dados) {
   const cpf = formatarCPF(dados.CPF);
   
   if (!cpf) {
@@ -207,96 +85,61 @@ async function importarPaciente(client, dados) {
   }
   
   try {
-    // 1. Verificar se CPF já existe
-    const cpfExiste = await client.query(
-      'SELECT id FROM usuarios WHERE cpf = $1',
+    // 1. Buscar paciente pelo CPF
+    const resultado = await client.query(
+      `SELECT p.id, p.microarea, p.agente_nome
+       FROM pacientes p
+       INNER JOIN usuarios u ON p.usuario_id = u.id
+       WHERE u.cpf = $1`,
       [cpf]
     );
     
-    if (cpfExiste.rows.length > 0) {
-      stats.cpf_duplicado++;
-      return { sucesso: false, motivo: 'cpf_duplicado', cpf };
+    if (resultado.rows.length === 0) {
+      stats.nao_encontrados++;
+      return { sucesso: false, motivo: 'nao_encontrado', cpf };
     }
     
-    // 2. Obter/Criar UBS
-    const ubsId = await obterOuCriarUBS(client, dados.UBS);
+    const paciente = resultado.rows[0];
     
-    // 3. Gerar hash da senha (CPF sem formatação)
-    const cpfSemFormatacao = cpf.replace(/\D/g, '');
-    const senhaHash = await gerarHashSenha(cpfSemFormatacao);
+    // 2. Extrair dados da planilha
+    const microarea = dados['MICROÁREA'] || dados['MICRO ÁREA'] || null;
+    const agenteNome = dados.ACS || dados['AGENTE'] || dados['AGENTE UBS'] || null;
     
-    // 4. Extrair dados do Excel
-    const nome = dados.NOME || 'Não informado';
-    const endereco = limparEndereco(dados['ENDEREÇO']);
-    const cep = extrairCEP(dados['ENDEREÇO']);
-    const telefone = dados.TELEFONE || '';
-    const dataNascimento = parseData(dados['DATA NASCIMENTO']);
-    const sexo = normalizarSexo(dados.SEXO);
+    // 3. Verificar se precisa atualizar
+    const microareaStr = microarea ? microarea.toString().trim() : null;
+    const agenteStr = agenteNome ? agenteNome.toString().trim() : null;
     
-    // ✅ GERAR EMAIL ÚNICO BASEADO NO CPF
-    const emailUnico = `paciente.${cpfSemFormatacao}@itabaiana.pb.gov.br`;
+    const precisaAtualizar = 
+      (microareaStr && microareaStr !== paciente.microarea) ||
+      (agenteStr && agenteStr !== paciente.agente_nome);
     
-    // 5. Inserir USUÁRIO
-    const usuarioResult = await client.query(
-      `INSERT INTO usuarios 
-        (cpf, nome_completo, email, telefone, senha_hash, endereco, cep, tipo_usuario, ativo, sexo, data_cadastro)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
-       RETURNING id`,
-      [cpf, nome, emailUnico, telefone, senhaHash, endereco, cep, 'paciente', true, sexo]
-    );
+    if (!precisaAtualizar) {
+      return { sucesso: true, motivo: 'ja_atualizado' };
+    }
     
-    const usuarioId = usuarioResult.rows[0].id;
-    
-    // 6. Extrair dados específicos do paciente
-    const cartaoSUS = dados['CARTÃO SUS'] ? dados['CARTÃO SUS'].toString() : null;
-    const tipoSanguineo = normalizarTipoSanguineo(dados['TIPO SANGUINEO']);
-    const responsavelFamiliar = normalizarBoolean(dados['RESPONSÁVEL'] || dados.RESPONSÁVEL);
-    const microarea = dados['MICRO ÁREA'] ? dados['MICRO ÁREA'].toString() : null;
-    const mudouSe = normalizarBoolean(dados['MUDOU-SE']);
-    const dataObito = dados['DATA DO ÓBITO'] ? parseData(dados['DATA DO ÓBITO']) : null;
-    const horaInicio = parseHora(dados['HORA INÍCIO']);
-    const horaFim = parseHora(dados['HORA FIM']);
-    const podeDoarPara = dados['PODE DOAR PARA'] || null;
-    const podeReceberDe = dados['PODE RECEBER DE'] || null;
-    const agenteNome = dados.ACS || dados['AGENTE UBS'] || null;
-    
-    // 7. Inserir PACIENTE
+    // 4. Atualizar paciente
     await client.query(
-      `INSERT INTO pacientes 
-        (usuario_id, cartao_sus, nome_pai, nome_mae, data_nascimento, tipo_sanguineo, 
-         alergias, observacoes_medicas, ubs_cadastro_id, agente_id, microarea, 
-         responsavel_familiar, agente_nome, pode_doar_para, pode_receber_de, 
-         mudou_se, data_obito, hora_cadastro_inicio, hora_cadastro_fim, data_cadastro)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, CURRENT_TIMESTAMP)`,
-      [
-        usuarioId, cartaoSUS, null, 'Não informado', dataNascimento, tipoSanguineo,
-        null, null, ubsId, null, microarea,
-        responsavelFamiliar, agenteNome, podeDoarPara, podeReceberDe,
-        mudouSe, dataObito, horaInicio, horaFim
-      ]
+      `UPDATE pacientes 
+       SET microarea = $1, agente_nome = $2
+       WHERE id = $3`,
+      [microareaStr, agenteStr, paciente.id]
     );
     
-    stats.pacientes_importados++;
+    stats.atualizados++;
     return { sucesso: true };
     
   } catch (erro) {
-    stats.pacientes_erro++;
-    stats.erros.push({ cpf, nome: dados.NOME, erro: erro.message });
-    
-    if (stats.pacientes_erro <= 5) {
-      console.log(`   ❌ ERRO: ${erro.message}`);
-      console.log(`      CPF: ${cpf} | Nome: ${dados.NOME}`);
-    }
-    
+    stats.erros++;
+    console.error(`   ❌ ERRO ao atualizar CPF ${cpf}:`, erro.message);
     return { sucesso: false, motivo: 'erro_bd', erro: erro.message };
   }
 }
 
 // ============================================
-// IMPORTAR EM LOTES
+// ATUALIZAR EM LOTES
 // ============================================
-async function importarEmLotes(client, dadosExcel) {
-  console.log('\n📥 Iniciando importação em lotes...');
+async function atualizarEmLotes(client, dadosExcel) {
+  console.log('\n📥 Iniciando atualização em lotes...');
   console.log(`   Tamanho do lote: ${BATCH_SIZE} registros\n`);
   
   const totalLotes = Math.ceil(dadosExcel.length / BATCH_SIZE);
@@ -307,13 +150,28 @@ async function importarEmLotes(client, dadosExcel) {
     
     console.log(`📦 Lote ${loteAtual}/${totalLotes} (${i + 1} a ${Math.min(i + BATCH_SIZE, dadosExcel.length)} de ${dadosExcel.length})`);
     
+    // Testar conexão e reconectar se necessário
+    try {
+      await client.query('SELECT 1');
+    } catch (erro) {
+      console.log('   ⚠️  Conexão perdida! Reconectando...');
+      try {
+        await client.end();
+      } catch (e) {}
+      
+      client = await conectarBanco();
+      console.log('   ✅ Reconectado!\n');
+    }
+    
     for (const linha of lote) {
-      await importarPaciente(client, linha);
+      await atualizarPaciente(client, linha);
     }
     
     const percentual = ((i + BATCH_SIZE) / dadosExcel.length * 100).toFixed(1);
-    console.log(`   ✅ Progresso: ${stats.pacientes_importados} importados | ${stats.sem_cpf} sem CPF | ${stats.cpf_duplicado} duplicados | ${stats.pacientes_erro} erros (${percentual}%)\n`);
+    console.log(`   ✅ Progresso: ${stats.atualizados} atualizados | ${stats.nao_encontrados} não encontrados | ${stats.sem_cpf} sem CPF | ${stats.erros} erros (${percentual}%)\n`);
   }
+  
+  return client;
 }
 
 // ============================================
@@ -322,34 +180,23 @@ async function importarEmLotes(client, dadosExcel) {
 function gerarRelatorio() {
   const relatorio = `
 ================================================================================
-📊 RELATÓRIO DE IMPORTAÇÃO DE PACIENTES
+📊 RELATÓRIO DE ATUALIZAÇÃO - ACS E MICROÁREA
 ================================================================================
 Sistema de Transporte SUS - Itabaiana/PB
 Data: ${new Date().toLocaleString('pt-BR')}
 
-📈 ESTATÍSTICAS GERAIS:
+📈 ESTATÍSTICAS:
 ────────────────────────────────────────────────────────────────────────────────
   Total de linhas no Excel:        ${stats.total_linhas.toLocaleString('pt-BR')}
   
-  ✅ Pacientes importados:          ${stats.pacientes_importados.toLocaleString('pt-BR')}
-  ❌ Pacientes com erro:            ${stats.pacientes_erro.toLocaleString('pt-BR')}
+  ✅ Pacientes atualizados:         ${stats.atualizados.toLocaleString('pt-BR')}
+  ⚠️  Pacientes não encontrados:    ${stats.nao_encontrados.toLocaleString('pt-BR')}
   ⚠️  Sem CPF (ignorados):           ${stats.sem_cpf.toLocaleString('pt-BR')}
-  ⚠️  CPF duplicado (ignorados):     ${stats.cpf_duplicado.toLocaleString('pt-BR')}
-  
-  🏥 UBS criadas:                   ${stats.ubs_criadas.toLocaleString('pt-BR')}
+  ❌ Erros:                         ${stats.erros.toLocaleString('pt-BR')}
 
 📊 TAXA DE SUCESSO:
 ────────────────────────────────────────────────────────────────────────────────
-  ${((stats.pacientes_importados / stats.total_linhas) * 100).toFixed(2)}%
-
-${stats.erros.length > 0 ? `
-⚠️  ERROS ENCONTRADOS (Primeiros 20):
-────────────────────────────────────────────────────────────────────────────────
-${stats.erros.slice(0, 20).map((e, i) => 
-  `  ${i + 1}. CPF: ${e.cpf} | Nome: ${e.nome}\n     Erro: ${e.erro}`
-).join('\n')}
-${stats.erros.length > 20 ? `\n  ... e mais ${stats.erros.length - 20} erros` : ''}
-` : '✅ Nenhum erro encontrado!'}
+  ${((stats.atualizados / stats.total_linhas) * 100).toFixed(2)}%
 
 ================================================================================
 `;
@@ -362,7 +209,7 @@ ${stats.erros.length > 20 ? `\n  ... e mais ${stats.erros.length - 20} erros` : 
 // ============================================
 async function main() {
   console.log('================================================================================');
-  console.log('🚀 IMPORTAÇÃO DE PACIENTES - Sistema de Transporte SUS');
+  console.log('🔄 ATUALIZAÇÃO - ACS E MICROÁREA');
   console.log('================================================================================\n');
   
   let client;
@@ -370,29 +217,22 @@ async function main() {
   try {
     const dadosExcel = lerExcel();
     
-    console.log('\n🔌 Conectando ao banco de dados...');
+    console.log('🔌 Conectando ao banco de dados...');
     client = await conectarBanco();
     console.log('✅ Conectado ao PostgreSQL!\n');
     
-    // ❌ REMOVIDO: await client.query('BEGIN');
-    
-    await importarEmLotes(client, dadosExcel);
-    
-    // ❌ REMOVIDO: await client.query('COMMIT');
+    client = await atualizarEmLotes(client, dadosExcel);
     
     const relatorio = gerarRelatorio();
     console.log(relatorio);
     
-    const nomeArquivo = `relatorio_importacao_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+    const nomeArquivo = `relatorio_atualizacao_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
     fs.writeFileSync(nomeArquivo, relatorio);
     console.log(`📄 Relatório salvo em: ${nomeArquivo}\n`);
     
   } catch (erro) {
     console.error('\n❌ ERRO FATAL:', erro.message);
     console.error(erro.stack);
-    
-    // ❌ REMOVIDO: await client.query('ROLLBACK');
-    
     process.exit(1);
     
   } finally {
@@ -403,7 +243,7 @@ async function main() {
   }
   
   console.log('================================================================================');
-  console.log('✅ IMPORTAÇÃO CONCLUÍDA COM SUCESSO!');
+  console.log('✅ ATUALIZAÇÃO CONCLUÍDA COM SUCESSO!');
   console.log('================================================================================\n');
 }
 

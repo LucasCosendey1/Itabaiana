@@ -10,9 +10,7 @@
 \echo '============================================'
 \echo '1. TABELAS DO BANCO DE DADOS'
 \echo '============================================'
-SELECT 
-ALTER TABLE pacientes 
-ADD COLUMN agente_nome VARCHAR(255);
+SELECT
     table_name,
     table_type
 FROM information_schema.tables 

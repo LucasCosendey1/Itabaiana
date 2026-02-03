@@ -1,0 +1,33 @@
+
+================================================================================
+📊 RELATÓRIO DE IMPORTAÇÃO DE PACIENTES
+================================================================================
+Sistema de Transporte SUS - Itabaiana/PB
+Data: 03/02/2026, 00:35:15
+
+📈 ESTATÍSTICAS GERAIS:
+────────────────────────────────────────────────────────────────────────────────
+  Total de linhas no Excel:        23.999
+  
+  ✅ Pacientes importados:          6.692
+  ❌ Pacientes com erro:            2
+  ⚠️  Sem CPF (ignorados):           243
+  ⚠️  CPF duplicado (ignorados):     17.062
+  
+  🏥 UBS criadas:                   0
+
+📊 TAXA DE SUCESSO:
+────────────────────────────────────────────────────────────────────────────────
+  27.88%
+
+
+⚠️  ERROS ENCONTRADOS (Primeiros 20):
+────────────────────────────────────────────────────────────────────────────────
+  1. CPF: 806.446.434-04 | Nome: MARIA GRACIETE DA SILVA
+     Erro: value too long for type character varying(10)
+  2. CPF: 177.292.224-26 | Nome: RAILA ALMEIDA DE SOUZA
+     Erro: value too long for type character varying(10)
+
+
+
+================================================================================
